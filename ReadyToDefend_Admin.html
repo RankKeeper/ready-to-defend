@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ready To Defend — Admin Console</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#003DA5;--navy-dark:#002d82;--navy-light:#185FA5;
+  --gold:#D4AF37;--gold-dark:#c09e2a;--gold-light:rgba(212,175,55,0.1);
+  --red:#C0392B;--orange:#E67E22;--yellow:#B8860B;--green:#27AE60;--blue:#185FA5;
+  --bg:#f0f2f8;--white:#fff;--border:#e2e4e9;
+  --text:#1a1a2e;--text-2:#555;--text-3:#888;
+  --radius:10px;--shadow:0 2px 12px rgba(0,0,0,0.07)
+}
+body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--navy) 0%,var(--navy-light) 100%)}
+.login-card{background:var(--white);border-radius:14px;padding:2.5rem;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,0.2)}
+.login-logo{text-align:center;margin-bottom:1.5rem}
+.login-logo img{height:80px;width:auto}
+.login-title{font-size:20px;font-weight:400;color:var(--navy);text-align:center;font-family:Georgia,serif;margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--text-3);text-align:center;margin-bottom:1.75rem}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:4px}
+.field input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:Arial,sans-serif;color:var(--text)}
+.field input:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(0,61,165,0.1)}
+.btn{padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;font-family:Arial,sans-serif;font-weight:600;border:none;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px}
+.btn-navy{background:var(--navy);color:#fff;width:100%;justify-content:center}
+.btn-navy:hover{background:var(--navy-dark)}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-gold:hover{background:var(--gold-dark)}
+.btn-outline{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}
+.btn-outline:hover{background:rgba(0,61,165,0.05)}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-success{background:#f0fff4;color:var(--green);border:1px solid #a8e6bf}
+.btn-danger{background:#fff5f5;color:var(--red);border:1px solid #f5c1c1}
+.err-box{background:#fff5f5;border:1px solid #f5c1c1;border-radius:8px;padding:10px 12px;font-size:13px;color:var(--red);margin-bottom:12px;display:none}
+
+/* APP LAYOUT */
+.app{display:none;min-height:100vh;flex-direction:column}
+.app.on{display:flex}
+
+/* TOP BAR */
+.topbar{background:var(--navy);height:56px;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+.topbar-brand{display:flex;align-items:center;gap:12px}
+.topbar-logo{height:36px;width:auto}
+.topbar-name{font-size:15px;font-weight:500;color:#fff;font-family:Georgia,serif}
+.topbar-sub{font-size:10px;color:rgba(255,255,255,0.6);margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.topbar-user{font-size:12px;color:rgba(255,255,255,0.7)}
+.topbar-out{padding:5px 12px;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:6px;font-size:12px;cursor:pointer;font-family:Arial,sans-serif}
+.topbar-out:hover{background:rgba(255,255,255,0.2)}
+
+/* MAIN */
+.main{flex:1;padding:1.5rem;max-width:1200px;margin:0 auto;width:100%}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:1.5rem}
+.stat{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:1rem;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
+.stat-ico{width:42px;height:42px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.ico-navy{background:rgba(0,61,165,0.1)}
+.ico-gold{background:rgba(212,175,55,0.15)}
+.ico-red{background:rgba(192,57,43,0.1)}
+.ico-green{background:rgba(39,174,96,0.1)}
+.ico-orange{background:rgba(230,126,34,0.1)}
+.stat-n{font-size:24px;font-weight:600;color:var(--navy);line-height:1}
+.stat-l{font-size:11px;color:var(--text-3);margin-top:3px}
+
+/* CONTROLS */
+.controls{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:var(--shadow)}
+.ctl-left{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.ctl-right{display:flex;gap:8px}
+.tog-wrap{display:flex;align-items:center;gap:10px}
+.tog-label{font-size:13px;font-weight:500;color:var(--text)}
+.tog-sub{font-size:11px;color:var(--text-3)}
+.toggle{position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.tog-sl{position:absolute;inset:0;background:#ccc;border-radius:24px;transition:0.2s}
+.tog-sl::before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:0.2s}
+.toggle input:checked+.tog-sl{background:var(--navy)}
+.toggle input:checked+.tog-sl::before{transform:translateX(20px)}
+.toggle.gold input:checked+.tog-sl{background:var(--gold)}
+.divv{width:1px;height:32px;background:var(--border)}
+
+/* VACATION BANNER */
+.vac-banner{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:var(--navy);padding:10px 16px;border-radius:var(--radius);margin-bottom:1.25rem;display:none;align-items:center;gap:10px;font-size:13px;font-weight:500}
+.vac-banner.on{display:flex}
+
+/* TABS */
+.tabs{display:flex;gap:4px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:4px;margin-bottom:1.25rem;box-shadow:var(--shadow)}
+.tab{padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-2);transition:all 0.15s;font-family:Arial,sans-serif;display:flex;align-items:center;gap:6px}
+.tab.on{background:var(--navy);color:#fff}
+.tab:hover:not(.on){background:var(--bg)}
+.tc{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 4px;border-radius:9px;font-size:10px}
+.tab.on .tc{background:rgba(255,255,255,0.25);color:#fff}
+.tab:not(.on) .tc{background:rgba(0,61,165,0.1);color:var(--navy)}
+
+/* QUEUE */
+.queue-box{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.qh{display:grid;grid-template-columns:2.5fr 1.2fr 160px 100px 150px;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 16px;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:0.05em}
+.qr{display:grid;grid-template-columns:2.5fr 1.2fr 160px 100px 150px;padding:13px 16px;border-bottom:1px solid #f4f5f7;align-items:center;transition:background 0.1s}
+.qr:last-child{border-bottom:none}
+.qr:hover{background:#fafbfc}
+.qr.held{border-left:3px solid var(--gold)}
+.qr.released{border-left:3px solid var(--green)}
+.qr.flagged{border-left:3px solid var(--red)}
+.sname{font-size:14px;font-weight:500;color:var(--text)}
+.semail{font-size:11px;color:var(--text-3);margin-top:2px}
+.smeta{font-size:11px;color:var(--text-3);margin-top:1px}
+.flag-pills{display:flex;gap:4px;flex-wrap:wrap}
+.fp{padding:2px 7px;border-radius:12px;font-size:11px;font-weight:600}
+.fp-c{background:#fff5f5;color:var(--red)}
+.fp-m{background:#fff8f0;color:var(--orange)}
+.fp-mod{background:#fffdf0;color:var(--yellow)}
+.fp-mi{background:#f0fff4;color:var(--green)}
+.sb{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;display:inline-block}
+.sb-held{background:rgba(212,175,55,0.15);color:#7a5c00}
+.sb-released{background:rgba(39,174,96,0.12);color:#1a6b3a}
+.sb-proc{background:rgba(0,61,165,0.1);color:var(--navy)}
+.sb-flag{background:rgba(192,57,43,0.1);color:var(--red)}
+.row-acts{display:flex;gap:6px;justify-content:flex-end}
+
+/* MODAL */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:2rem;overflow-y:auto}
+.modal-ov.on{display:flex}
+.modal{background:var(--white);border-radius:14px;width:100%;max-width:800px;margin:auto;box-shadow:0 16px 64px rgba(0,0,0,0.2)}
+.modal-hd{background:var(--navy);padding:1.25rem 1.5rem;border-radius:14px 14px 0 0;display:flex;justify-content:space-between;align-items:center}
+.modal-htitle{font-size:16px;font-weight:500;color:#fff;font-family:Georgia,serif}
+.modal-hmeta{font-size:11px;color:rgba(255,255,255,0.65);margin-top:3px}
+.modal-x{background:rgba(255,255,255,0.15);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.modal-bd{padding:1.5rem}
+.modal-ft{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.flag-sum{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1.25rem}
+.fs-cell{border-radius:8px;padding:10px;text-align:center;border:1px solid var(--border)}
+.fs-n{font-size:20px;font-weight:600;line-height:1}
+.fs-l{font-size:10px;color:var(--text-3);margin-top:3px}
+.fs-c{background:#fff5f5;border-color:#f5c1c1}.fs-c .fs-n{color:var(--red)}
+.fs-m{background:#fff8f0;border-color:#f5d5b0}.fs-m .fs-n{color:var(--orange)}
+.fs-mod{background:#fffdf0;border-color:#f0e0a0}.fs-mod .fs-n{color:var(--yellow)}
+.fs-mi{background:#f0fff4;border-color:#a8e6bf}.fs-mi .fs-n{color:var(--green)}
+.fs-co{background:#f0f4ff;border-color:#b0c4f5}.fs-co .fs-n{color:var(--blue)}
+.note-area{width:100%;padding:10px 12px;border:1px solid var(--gold);border-radius:8px;font-size:13px;font-family:Georgia,serif;font-style:italic;resize:vertical;min-height:72px;background:var(--gold-light);color:var(--text)}
+.note-area:focus{outline:none;border-color:var(--gold-dark)}
+.finding-row{display:grid;grid-template-columns:36px 1fr 220px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;font-size:12px}
+.fr-flag{padding:12px 6px;display:flex;align-items:flex-start;justify-content:center;font-size:16px;background:var(--bg);border-right:1px solid var(--border)}
+.fr-issue{padding:10px 12px;border-right:1px solid var(--border);line-height:1.6}
+.fr-note{padding:10px 12px;background:var(--gold-light);font-style:italic;color:var(--text-2);font-size:11.5px;line-height:1.6}
+.fr-mod{font-size:9px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-bottom:4px}
+.fr-pass{background:var(--bg);border-left:2px solid var(--gold);padding:4px 8px;margin:5px 0;font-style:italic;font-size:11px;border-radius:0 4px 4px 0}
+.fr-notelabel{font-size:9px;font-style:normal;font-weight:600;color:var(--gold-dark);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px}
+
+/* EMPTY */
+.empty{text-align:center;padding:3rem;color:var(--text-3)}
+.empty-ico{font-size:36px;margin-bottom:12px}
+.empty-t{font-size:15px;font-weight:500;color:var(--text-2);margin-bottom:6px}
+
+/* FLAG LOG */
+.flr{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 100px;padding:12px 16px;border-bottom:1px solid #f4f5f7;font-size:13px;align-items:center}
+.flr:last-child{border-bottom:none}
+
+/* STUDENTS */
+.str{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;padding:12px 16px;border-bottom:1px solid #f4f5f7;font-size:13px;align-items:center}
+.str:last-child{border-bottom:none}
+
+@media(max-width:900px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .qh,.qr{grid-template-columns:1fr 100px 120px}
+  .qh>div:nth-child(2),.qr>div:nth-child(2),
+  .qh>div:nth-child(3),.qr>div:nth-child(3){display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="ls">
+<div class="login-wrap">
+<div class="login-card">
+  <div class="login-logo">
+    <img src="ready_to_defend_logo.png" alt="Ready To Defend" onerror="this.style.display='none';document.getElementById('ll').style.display='block'">
+    <div id="ll" style="display:none;font-size:22px;font-weight:400;color:var(--navy);font-family:Georgia,serif;text-align:center">Ready To Defend</div>
+  </div>
+  <div class="login-title">Admin Console</div>
+  <div class="login-sub">Jennifer Touati, EdD &nbsp;·&nbsp; Education Under Construction LLC</div>
+  <div class="field"><label>Email</label><input type="email" id="le" value="drtouati@euc2.org"></div>
+  <div class="field"><label>Password</label><input type="password" id="lp" placeholder="Your password"></div>
+  <div id="lerr" class="err-box"></div>
+  <button class="btn btn-navy" onclick="doLogin()">Sign In to Admin Console</button>
+  <div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:1rem">Ready To Defend Admin &nbsp;·&nbsp; Education Under Construction LLC</div>
+</div>
+</div>
+</div>
+
+<!-- APP -->
+<div id="ap" class="app">
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <img src="ready_to_defend_logo.png" alt="RTD" class="topbar-logo" onerror="this.style.display='none'">
+    <div>
+      <div class="topbar-name">Admin Console</div>
+      <div class="topbar-sub">Ready To Defend &nbsp;·&nbsp; Education Under Construction LLC</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-user">Jennifer Touati, EdD</span>
+    <button class="topbar-out" onclick="doOut()">Sign Out</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="vac-banner" id="vb">
+    ✈️ &nbsp;<strong>Vacation Mode is ON</strong> &nbsp;— Students see the extended delivery message.
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="stat-ico ico-gold">📋</div><div><div class="stat-n" id="sn-held">—</div><div class="stat-l">Held for Review</div></div></div>
+    <div class="stat"><div class="stat-ico ico-navy">⏳</div><div><div class="stat-n" id="sn-proc">—</div><div class="stat-l">Processing</div></div></div>
+    <div class="stat"><div class="stat-ico ico-green">✅</div><div><div class="stat-n" id="sn-rel">—</div><div class="stat-l">Released Today</div></div></div>
+    <div class="stat"><div class="stat-ico ico-red">🚩</div><div><div class="stat-n" id="sn-flag">—</div><div class="stat-l">Flagged Accounts</div></div></div>
+    <div class="stat"><div class="stat-ico ico-orange">👥</div><div><div class="stat-n" id="sn-stu">—</div><div class="stat-l">Active Students</div></div></div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <div class="ctl-left">
+      <div class="tog-wrap">
+        <label class="toggle"><input type="checkbox" id="t-hold" onchange="setHoldAll(this.checked)"><span class="tog-sl"></span></label>
+        <div><div class="tog-label">Hold All Reports</div><div class="tog-sub">Queue new reports for your review before delivery</div></div>
+      </div>
+      <div class="divv"></div>
+      <div class="tog-wrap">
+        <label class="toggle gold"><input type="checkbox" id="t-vac" onchange="setVacation(this.checked)"><span class="tog-sl"></span></label>
+        <div><div class="tog-label">Vacation Mode</div><div class="tog-sub">Students see 24–48 hour delivery message</div></div>
+      </div>
+    </div>
+    <div class="ctl-right">
+      <button class="btn btn-outline btn-sm" onclick="refresh()">↻ Refresh</button>
+      <button class="btn btn-gold btn-sm" onclick="releaseAll()">Release All Held →</button>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab on" onclick="goTab('held',this)">Held <span class="tc" id="tc-held">0</span></button>
+    <button class="tab" onclick="goTab('all',this)">All Reports <span class="tc" id="tc-all">0</span></button>
+    <button class="tab" onclick="goTab('released',this)">Released <span class="tc" id="tc-rel">0</span></button>
+    <button class="tab" onclick="goTab('flags',this)">Account Flags <span class="tc" id="tc-flags">0</span></button>
+    <button class="tab" onclick="goTab('students',this)">Students</button>
+  </div>
+
+  <!-- TAB CONTENT -->
+  <div id="t-held">
+    <div class="queue-box">
+      <div class="qh"><div>Student</div><div>Submission</div><div>Flags</div><div>Status</div><div style="text-align:right">Actions</div></div>
+      <div id="list-held"><div class="empty"><div class="empty-ico">📭</div><div class="empty-t">No reports held</div></div></div>
+    </div>
+  </div>
+
+  <div id="t-all" style="display:none">
+    <div class="queue-box">
+      <div class="qh"><div>Student</div><div>Submission</div><div>Flags</div><div>Status</div><div style="text-align:right">Actions</div></div>
+      <div id="list-all"><div class="empty"><div class="empty-ico">📋</div><div class="empty-t">No submissions yet</div></div></div>
+    </div>
+  </div>
+
+  <div id="t-released" style="display:none">
+    <div class="queue-box">
+      <div class="qh"><div>Student</div><div>Submission</div><div>Flags</div><div>Status</div><div style="text-align:right">Actions</div></div>
+      <div id="list-released"><div class="empty"><div class="empty-ico">✅</div><div class="empty-t">No released reports yet</div></div></div>
+    </div>
+  </div>
+
+  <div id="t-flags" style="display:none">
+    <div class="queue-box">
+      <div class="qh" style="grid-template-columns:2fr 1fr 1fr 100px"><div>Student</div><div>Account Name</div><div>Name on Cover Page</div><div style="text-align:right">Action</div></div>
+      <div id="list-flags"><div class="empty"><div class="empty-ico">🛡️</div><div class="empty-t">No account flags</div></div></div>
+    </div>
+  </div>
+
+  <div id="t-students" style="display:none">
+    <div class="queue-box">
+      <div class="qh" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr"><div>Student</div><div>Plan</div><div>Expires</div><div>Submissions</div><div>Status</div></div>
+      <div id="list-students"><div class="empty"><div class="empty-ico">👥</div><div class="empty-t">No students yet</div></div></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal-ov" id="mod">
+<div class="modal">
+  <div class="modal-hd">
+    <div>
+      <div class="modal-htitle" id="mod-name">Student</div>
+      <div class="modal-hmeta" id="mod-meta"></div>
+    </div>
+    <button class="modal-x" onclick="closeM()">✕</button>
+  </div>
+  <div class="modal-bd">
+    <div class="flag-sum">
+      <div class="fs-cell fs-c"><div class="fs-n" id="mc">0</div><div class="fs-l">🔴 Critical</div></div>
+      <div class="fs-cell fs-m"><div class="fs-n" id="mm">0</div><div class="fs-l">🟠 Major</div></div>
+      <div class="fs-cell fs-mod"><div class="fs-n" id="mmod">0</div><div class="fs-l">🟡 Moderate</div></div>
+      <div class="fs-cell fs-mi"><div class="fs-n" id="mmi">0</div><div class="fs-l">🟢 Minor</div></div>
+      <div class="fs-cell fs-co"><div class="fs-n" id="mco">0</div><div class="fs-l">🔵 Notes</div></div>
+    </div>
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Personal Note from Jennifer (added to report cover letter)</div>
+      <textarea class="note-area" id="mod-notes" placeholder="Add a personal note that will be included with this student's report..."></textarea>
+      <div style="font-size:11px;color:var(--text-3);margin-top:4px">This note appears in the cover letter alongside the AI-generated report.</div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Findings</div>
+    <div id="mod-findings"><div style="text-align:center;padding:1.5rem;color:var(--text-3);font-size:13px">Loading...</div></div>
+  </div>
+  <div class="modal-ft">
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-danger btn-sm" onclick="flagAcc()">🚩 Flag Account</button>
+      <button class="btn btn-outline btn-sm" onclick="closeM()">Close</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline btn-sm" onclick="saveNote()">Save Note</button>
+      <button class="btn btn-gold" onclick="releaseOne()">Release Report →</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+var SUPABASE_URL = 'https://nhvcnpcdfuhmlpovkogk.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5odmNucGNkZnVobWxwb3Zrb2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzAxNzksImV4cCI6MjA5NjUwNjE3OX0.VibROZGpvk6Gb91XDsyo-QT0oztTXpk5I37IhHkbfvI';
+var ADMIN_EMAIL = 'drtouati@euc2.org';
+var sb = null;
+var curSubId = null;
+var curTab = 'held';
+
+function xss(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+window.addEventListener('load', function() {
+  if (window.supabase) {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    sb.auth.getSession().then(function(r) {
+      if (r.data && r.data.session && r.data.session.user.email === ADMIN_EMAIL) showApp();
+    });
+  }
+  document.getElementById('lp').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+});
+
+function doLogin() {
+  var em = document.getElementById('le').value.trim();
+  var pw = document.getElementById('lp').value;
+  var err = document.getElementById('lerr');
+  err.style.display = 'none';
+  if (!sb) { err.textContent='Service unavailable'; err.style.display='block'; return; }
+  sb.auth.signInWithPassword({email:em, password:pw}).then(function(r) {
+    if (r.error) { err.textContent=r.error.message; err.style.display='block'; return; }
+    if (r.data.user.email !== ADMIN_EMAIL) { err.textContent='Access denied.'; err.style.display='block'; sb.auth.signOut(); return; }
+    showApp();
+  });
+}
+
+function showApp() {
+  document.getElementById('ls').style.display = 'none';
+  document.getElementById('ap').classList.add('on');
+  loadSettings();
+  loadStats();
+  loadQ('held');
+}
+
+function doOut() {
+  if (sb) sb.auth.signOut();
+  document.getElementById('ls').style.display = 'block';
+  document.getElementById('ap').classList.remove('on');
+  document.getElementById('lp').value = '';
+}
+
+function goTab(name, el) {
+  curTab = name;
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  el.classList.add('on');
+  ['held','all','released','flags','students'].forEach(function(n){
+    document.getElementById('t-'+n).style.display = (n===name)?'block':'none';
+  });
+  if (name==='held') loadQ('held');
+  else if (name==='all') loadQ('all');
+  else if (name==='released') loadQ('released');
+  else if (name==='flags') loadFlags();
+  else if (name==='students') loadStudents();
+}
+
+function loadSettings() {
+  if (!sb) return;
+  sb.schema('rtd').from('admin_settings').select('*').eq('id',1).single().then(function(r) {
+    if (r.data) {
+      document.getElementById('t-hold').checked = r.data.hold_all_reports;
+      document.getElementById('t-vac').checked = r.data.vacation_mode;
+      if (r.data.vacation_mode) document.getElementById('vb').classList.add('on');
+    }
+  });
+}
+
+function loadStats() {
+  if (!sb) return;
+  sb.schema('rtd').from('submissions').select('report_status',{count:'exact',head:true}).eq('report_status','held').then(function(r){ var n=r.count||0; document.getElementById('sn-held').textContent=n; document.getElementById('tc-held').textContent=n; });
+  sb.schema('rtd').from('submissions').select('report_status',{count:'exact',head:true}).eq('report_status','processing').then(function(r){ document.getElementById('sn-proc').textContent=r.count||0; });
+  var tod=new Date(); tod.setHours(0,0,0,0);
+  sb.schema('rtd').from('submissions').select('report_status',{count:'exact',head:true}).eq('report_status','released').gte('report_released_at',tod.toISOString()).then(function(r){ var n=r.count||0; document.getElementById('sn-rel').textContent=n; document.getElementById('tc-rel').textContent=n; });
+  sb.schema('rtd').from('profiles').select('account_status',{count:'exact',head:true}).in('account_status',['flagged','suspended']).then(function(r){ var n=r.count||0; document.getElementById('sn-flag').textContent=n; document.getElementById('tc-flags').textContent=n; });
+  sb.schema('rtd').from('purchases').select('user_id',{count:'exact',head:true}).eq('access_granted',true).then(function(r){ document.getElementById('sn-stu').textContent=r.count||0; });
+  sb.schema('rtd').from('submissions').select('id',{count:'exact',head:true}).then(function(r){ document.getElementById('tc-all').textContent=r.count||0; });
+}
+
+function loadQ(status) {
+  if (!sb) return;
+  var lid = status==='released'?'list-released':status==='all'?'list-all':'list-held';
+  var el = document.getElementById(lid);
+  el.innerHTML = '<div class="empty"><div class="empty-ico">⏳</div><div class="empty-t">Loading...</div></div>';
+  var q = sb.schema('rtd').from('admin_queue').select('*');
+  if (status!=='all') q = q.eq('report_status',status);
+  q.order('created_at',{ascending:false}).limit(100).then(function(r) {
+    if (r.error) { el.innerHTML='<div class="empty"><div class="empty-t">Error: '+xss(r.error.message)+'</div></div>'; return; }
+    if (!r.data||!r.data.length) {
+      var msgs={held:'No reports held for review',released:'No released reports',all:'No submissions yet'};
+      el.innerHTML='<div class="empty"><div class="empty-ico">📭</div><div class="empty-t">'+msgs[status]+'</div></div>'; return;
+    }
+    el.innerHTML = r.data.map(function(row) {
+      var sc = row.admin_flagged?'flagged':row.report_status==='held'?'held':row.report_status==='released'?'released':'';
+      var sbd = row.report_status==='held'?'<span class="sb sb-held">Held</span>':
+                row.report_status==='released'?'<span class="sb sb-released">Released</span>':
+                row.report_status==='processing'?'<span class="sb sb-proc">Processing</span>':
+                '<span class="sb sb-flag">Flagged</span>';
+      var fps = '';
+      if (row.flag_count_critical>0) fps+='<span class="fp fp-c">🔴 '+row.flag_count_critical+'</span>';
+      if (row.flag_count_major>0) fps+='<span class="fp fp-m">🟠 '+row.flag_count_major+'</span>';
+      if (row.flag_count_moderate>0) fps+='<span class="fp fp-mod">🟡 '+row.flag_count_moderate+'</span>';
+      if (row.flag_count_minor>0) fps+='<span class="fp fp-mi">🟢 '+row.flag_count_minor+'</span>';
+      if (!fps) fps='<span style="font-size:11px;color:var(--text-3)">No flags</span>';
+      var sid=xss(row.submission_id);
+      var nm=xss(row.legal_name||'');
+      var deg=xss(row.degree_type||'');
+      var meth=xss(row.methodology||'');
+      var dt=new Date(row.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      return '<div class="qr '+sc+'">' +
+        '<div><div class="sname">'+nm+'</div><div class="semail">'+xss(row.email||'')+'</div><div class="smeta">'+deg+' · '+meth+' · Sub #'+(row.submission_number||1)+'</div></div>'+
+        '<div style="font-size:12px;color:var(--text-2)">'+xss((row.chapters_submitted||[]).join(', ') || '—')+'<div style="font-size:11px;color:var(--text-3)">'+dt+'</div></div>'+
+        '<div><div class="flag-pills">'+fps+'</div></div>'+
+        '<div>'+sbd+'</div>'+
+        '<div class="row-acts">'+
+          '<button class="btn btn-outline btn-sm" onclick="openM(\''+sid+'\',\''+nm+'\',\''+deg+'\',\''+meth+'\','+(row.flag_count_critical||0)+','+(row.flag_count_major||0)+','+(row.flag_count_moderate||0)+','+(row.flag_count_minor||0)+','+(row.flag_count_coaching||0)+')">Preview</button>'+
+          (row.report_status==='held'?'<button class="btn btn-success btn-sm" onclick="qRelease(\''+sid+'\')">Release ✓</button>':'')+
+        '</div>'+
+      '</div>';
+    }).join('');
+  });
+}
+
+function loadFlags() {
+  if (!sb) return;
+  var el = document.getElementById('list-flags');
+  el.innerHTML = '<div class="empty"><div class="empty-ico">⏳</div><div class="empty-t">Loading...</div></div>';
+  sb.schema('rtd').from('name_flag_log').select('*').eq('resolved',false).order('created_at',{ascending:false}).then(function(r) {
+    if (!r.data||!r.data.length) { el.innerHTML='<div class="empty"><div class="empty-ico">🛡️</div><div class="empty-t">No account flags</div></div>'; return; }
+    el.innerHTML=r.data.map(function(row){
+      return '<div class="flr"><div><div style="font-weight:500">'+xss(row.account_name||'')+'</div><div style="font-size:11px;color:var(--text-3)">'+(row.ip_address||'')+'</div></div>'+
+        '<div>'+xss(row.account_name||'')+'</div>'+
+        '<div style="color:var(--red)">'+xss(row.name_on_cover||'No name found')+'</div>'+
+        '<div style="font-size:11px;color:var(--text-3)">'+new Date(row.created_at).toLocaleDateString()+'</div>'+
+        '<div style="text-align:right"><button class="btn btn-outline btn-sm" onclick="resFlag(\''+row.id+'\')">Resolve</button></div></div>';
+    }).join('');
+  });
+}
+
+function loadStudents() {
+  if (!sb) return;
+  var el = document.getElementById('list-students');
+  el.innerHTML = '<div class="empty"><div class="empty-ico">⏳</div><div class="empty-t">Loading...</div></div>';
+  sb.schema('rtd').from('profiles').select('*').order('created_at',{ascending:false}).then(function(r) {
+    if (!r.data||!r.data.length) { el.innerHTML='<div class="empty"><div class="empty-ico">👥</div><div class="empty-t">No students yet</div></div>'; return; }
+    el.innerHTML=r.data.map(function(row){
+      var sc=row.account_status||'active';
+      var col=sc==='active'?'var(--green)':sc==='flagged'?'var(--orange)':'var(--red)';
+      return '<div class="str"><div><div style="font-weight:500">'+xss(row.legal_name||'')+'</div><div style="font-size:11px;color:var(--text-3)">'+xss(row.email||'')+'</div></div>'+
+        '<div style="font-size:12px">—</div><div style="font-size:12px">—</div>'+
+        '<div style="font-size:12px">'+(row.total_submissions||0)+' subs</div>'+
+        '<div><span style="font-size:12px;font-weight:500;color:'+col+'">'+sc+'</span></div></div>';
+    }).join('');
+  });
+}
+
+function openM(id, name, deg, meth, c, m, mod, mi, co) {
+  curSubId = id;
+  document.getElementById('mod-name').textContent = name;
+  document.getElementById('mod-meta').textContent = deg + ' · ' + meth;
+  document.getElementById('mc').textContent = c;
+  document.getElementById('mm').textContent = m;
+  document.getElementById('mmod').textContent = mod;
+  document.getElementById('mmi').textContent = mi;
+  document.getElementById('mco').textContent = co;
+  document.getElementById('mod-notes').value = '';
+  document.getElementById('mod-findings').innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-3);font-size:13px">Loading findings...</div>';
+  document.getElementById('mod').classList.add('on');
+  loadFindings(id);
+}
+
+function loadFindings(sid) {
+  if (!sb) return;
+  sb.schema('rtd').from('findings').select('*').eq('submission_id',sid).order('severity').then(function(r) {
+    var el = document.getElementById('mod-findings');
+    if (!r.data||!r.data.length) { el.innerHTML='<div style="text-align:center;padding:1.5rem;color:var(--text-3)">No findings stored for this submission yet.</div>'; return; }
+    var sev={critical:'🔴',major:'🟠',moderate:'🟡',minor:'🟢',coaching:'🔵'};
+    el.innerHTML=r.data.map(function(f){
+      return '<div class="finding-row">'+
+        '<div class="fr-flag">'+(sev[f.severity]||'🔵')+'</div>'+
+        '<div class="fr-issue"><div class="fr-mod">'+xss(f.module_name||'')+(f.section?' · '+xss(f.section):'')+'</div>'+
+        (f.passage?'<div class="fr-pass">"'+xss(f.passage)+'"</div>':'')+
+        '<div style="font-size:12px;margin-top:4px"><strong>Analysis:</strong> '+xss(f.issue||'')+'</div></div>'+
+        '<div class="fr-note"><div class="fr-notelabel">Dr. Touati\'s Note</div>'+xss(f.coaching||'')+'</div>'+
+      '</div>';
+    }).join('');
+  });
+}
+
+function closeM() { document.getElementById('mod').classList.remove('on'); curSubId=null; }
+
+function saveNote() {
+  if (!sb||!curSubId) return;
+  sb.schema('rtd').from('submissions').update({admin_notes:document.getElementById('mod-notes').value}).eq('id',curSubId).then(function(r){
+    if (!r.error) { var b=document.querySelector('.modal-ft .btn-outline[onclick="saveNote()"]'); if(b){b.textContent='Saved ✓';setTimeout(function(){b.textContent='Save Note';},2000);} }
+  });
+}
+
+function releaseOne() {
+  if (!sb||!curSubId) return;
+  sb.schema('rtd').from('submissions').update({
+    report_status:'released',
+    report_released_at:new Date().toISOString(),
+    admin_notes: document.getElementById('mod-notes').value || null
+  }).eq('id',curSubId).then(function(r){
+    if (!r.error) {
+      // Send report email to student immediately
+      sb.functions.invoke('send-report', { body: { submission_id: curSubId } }).then(function(er){
+        if (er.error) console.error('send-report error:', er.error);
+        else console.log('Report email sent to student');
+      });
+      closeM();
+      refresh();
+    }
+  });
+}
+
+function qRelease(id) {
+  if (!sb) return;
+  if (!confirm('Release this report to the student?')) return;
+  sb.schema('rtd').from('submissions').update({
+    report_status:'released',
+    report_released_at:new Date().toISOString()
+  }).eq('id',id).then(function(r){
+    if (!r.error) {
+      sb.functions.invoke('send-report', { body: { submission_id: id } }).then(function(er){
+        if (er.error) console.error('send-report error:', er.error);
+        else console.log('Report email sent');
+      });
+      refresh();
+    }
+  });
+}
+
+function releaseAll() {
+  if (!sb) return;
+  if (!confirm('Release ALL held reports to students? This cannot be undone.')) return;
+  sb.schema('rtd').from('submissions').update({report_status:'released',report_released_at:new Date().toISOString()}).eq('report_status','held').then(function(r){
+    if (!r.error) refresh();
+  });
+}
+
+function setHoldAll(v) {
+  if (!sb) return;
+  sb.schema('rtd').from('admin_settings').update({hold_all_reports:v}).eq('id',1).then(function(){});
+}
+
+function setVacation(v) {
+  if (!sb) return;
+  sb.schema('rtd').from('admin_settings').update({vacation_mode:v}).eq('id',1).then(function(){
+    var b=document.getElementById('vb');
+    if(v) b.classList.add('on'); else b.classList.remove('on');
+  });
+}
+
+function flagAcc() {
+  if (!curSubId) return;
+  if (!confirm('Flag this student account for review? Their submissions will be paused.')) return;
+  sb.schema('rtd').from('submissions').update({admin_flagged:true}).eq('id',curSubId).then(function(){ closeM(); refresh(); });
+}
+
+function resFlag(id) {
+  if (!sb) return;
+  sb.schema('rtd').from('name_flag_log').update({resolved:true,resolved_at:new Date().toISOString()}).eq('id',id).then(function(){ loadFlags(); loadStats(); });
+}
+
+function refresh() { loadQ(curTab==='released'?'released':curTab==='all'?'all':'held'); loadStats(); }
+
+document.getElementById('mod').addEventListener('click', function(e){ if(e.target===this) closeM(); });
+</script>
+</body>
+</html>
