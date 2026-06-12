@@ -358,11 +358,31 @@ function doLogin() {
   var pw = document.getElementById('lp').value;
   var err = document.getElementById('lerr');
   err.style.display = 'none';
-  if (!sb) { err.textContent='Service unavailable'; err.style.display='block'; return; }
+  if (!sb) {
+    err.textContent = 'Service unavailable -- Supabase client failed to initialize';
+    err.style.display = 'block';
+    return;
+  }
+  err.textContent = 'Signing in...';
+  err.style.color = '#003DA5';
+  err.style.display = 'block';
   sb.auth.signInWithPassword({email:em, password:pw}).then(function(r) {
-    if (r.error) { err.textContent=r.error.message; err.style.display='block'; return; }
-    if (r.data.user.email !== ADMIN_EMAIL) { err.textContent='Access denied.'; err.style.display='block'; sb.auth.signOut(); return; }
+    err.style.color = '#c0392b';
+    if (r.error) {
+      err.textContent = 'Login error: ' + r.error.message;
+      err.style.display = 'block';
+      return;
+    }
+    if (r.data.user.email !== ADMIN_EMAIL) {
+      err.textContent = 'Access denied -- not admin email';
+      err.style.display = 'block';
+      sb.auth.signOut();
+      return;
+    }
     showApp();
+  }).catch(function(e) {
+    err.textContent = 'Unexpected error: ' + e.message;
+    err.style.display = 'block';
   });
 }
 
@@ -460,7 +480,7 @@ function loadQ(status) {
         '<div><div class="flag-pills">'+fps+'</div></div>'+
         '<div>'+sbd+'</div>'+
         '<div class="row-acts">'+
-          '<button class="btn btn-outline btn-sm" onclick="openM(''+sid+'',''+nm+'',''+deg+'',''+meth+'','+(row.flag_count_critical||0)+','+(row.flag_count_major||0)+','+(row.flag_count_moderate||0)+','+(row.flag_count_minor||0)+','+(row.flag_count_coaching||0)+')">Preview</button>'+
+          '<button class="btn btn-outline btn-sm" onclick="openM(\'' + sid + '\',\'' + nm + '\',\'' + deg + '\',\'' + meth + '\','+(row.flag_count_critical||0)+','+(row.flag_count_major||0)+','+(row.flag_count_moderate||0)+','+(row.flag_count_minor||0)+','+(row.flag_count_coaching||0)+')">Preview</button>'+
           releaseBtn +
         '</div>'+
       '</div>';
