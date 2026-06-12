@@ -551,7 +551,7 @@ function releaseOne() {
   }).eq('id',curSubId).then(function(r){
     if (!r.error) {
       // Send report email to student immediately
-      sb.functions.invoke('SEND-REPORT', { body: { submission_id: curSubId } }).then(function(er){
+      sb.functions.invoke('send-report', { body: { submission_id: curSubId } }).then(function(er){
         if (er.error) console.error('send-report error:', er.error);
         else console.log('Report email sent to student');
       });
@@ -569,7 +569,7 @@ function qRelease(id) {
     report_released_at:new Date().toISOString()
   }).eq('id',id).then(function(r){
     if (!r.error) {
-      sb.functions.invoke('SEND-REPORT', { body: { submission_id: id } }).then(function(er){
+      sb.functions.invoke('send-report', { body: { submission_id: id } }).then(function(er){
         if (er.error) console.error('send-report error:', er.error);
         else console.log('Report email sent');
       });
