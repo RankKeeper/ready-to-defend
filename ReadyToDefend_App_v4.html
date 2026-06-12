@@ -120,14 +120,14 @@ input:disabled{background:#f4f5f7;color:#888}
 </div>
 
 <!-- SCREEN 1: ACCOUNT -->
-<div id="screen-account">
+<div id="screen-account" style="display:none">
   <div class="step-indicator">
     <div class="step active"></div><div class="step"></div><div class="step"></div><div class="step"></div>
     <span class="step-label">Step 1 of 4 &mdash; Account</span>
   </div>
   <div class="card">
     <div class="card-title">Create Your Account</div>
-    <div class="info-box">Three name fields are required to protect your intellectual property and ensure your review is prepared for the correct researcher. At least 1 of the name fields must match your dissertation cover page.</div>
+    
     <div class="row">
       <div class="field-group">
         <div class="field-label">Legal Name <span style="color:#c0392b">*</span></div>
@@ -140,11 +140,6 @@ input:disabled{background:#f4f5f7;color:#888}
     </div>
     <div class="field-group">
       <div class="field-label">Dissertation Name <span style="color:#999;font-weight:400">(as it appears on your title page)</span></div>
-      <label class="same-as-legal">
-        <input type="checkbox" id="same-as-legal" checked onchange="toggleDissName()">
-        Same as legal name
-      </label>
-      <input type="text" id="diss-name" placeholder="Name on dissertation title page" disabled>
     </div>
     <div class="legal-box">Defense Ready is a proprietary AI-assisted coaching system. Submission of multiple dissertation topics, sharing of account credentials, or use of this system on behalf of another student will result in immediate account suspension with no refund. By proceeding, you confirm this submission represents your original doctoral research.</div>
     <label class="check-item" style="margin-bottom:16px">
@@ -241,6 +236,31 @@ input:disabled{background:#f4f5f7;color:#888}
     <div id="passes-list"></div>
     <div class="debug-box" id="debug-box"></div>
     <div class="disclosure-text">This review applies Jennifer Touati's proprietary methodology across 26 modules. All coaching observations reflect the methodology of Jennifer Touati, EdD.</div>
+  </div>
+</div>
+
+
+
+<!-- SCREEN: HELD -->
+<div id="screen-held" style="display:none">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:#f0f2f8">
+    <div style="background:#fff;border-radius:14px;padding:3rem 2.5rem;max-width:520px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+      <img src="ready_to_defend_logo.png" alt="Ready To Defend" style="height:80px;width:auto;margin-bottom:1.5rem" onerror="this.style.display='none'">
+      <div style="font-size:40px;margin-bottom:1rem">&#x1F4CB;</div>
+      <div style="font-size:22px;font-weight:400;color:#003DA5;font-family:Georgia,serif;margin-bottom:12px">Your Review is Being Prepared</div>
+      <div style="font-size:14px;font-family:Arial,sans-serif;color:#555;line-height:1.8;margin-bottom:1.5rem">
+        Your dissertation has been submitted successfully. Jennifer Touati, EdD is reviewing your report before delivery.<br><br>
+        You will receive an email at <strong id="held-email"></strong> when your report is ready. Typical delivery is within 2&#x2013;4 hours during office hours.
+      </div>
+      <div style="background:#f8f9fb;border:1px solid #e2e4e9;border-radius:8px;padding:12px 16px;font-size:12px;font-family:Arial,sans-serif;color:#888;line-height:1.7;margin-bottom:1.5rem">
+        <strong>Office Hours (CT):</strong><br>
+        Monday&#x2013;Friday 8:00am&#x2013;7:00pm &nbsp;&#xB7;&nbsp; Saturday 10:00am&#x2013;5:00pm<br>
+        Closed Sundays and federal holidays
+      </div>
+      <div style="font-size:12px;font-family:Arial,sans-serif;color:#aaa">
+        Questions? <a href="mailto:support@euc2.org" style="color:#003DA5">support@euc2.org</a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -364,25 +384,38 @@ var sbClient = null;
 window.addEventListener('load', function() {
   if (window.supabase) {
     sbClient = window.supabase.createClient(SB_URL, SB_ANON);
+  }
+
+  // Supabase session is shared via localStorage on same domain
+  // Just check existing session directly - no token passing needed
+  function initApp() {
+    if (!sbClient) {
+      // No Supabase - show submit form anyway for testing
+      showScreen('submit');
+      return;
+    }
     sbClient.auth.getSession().then(function(r) {
       if (r.data && r.data.session) {
         var u = r.data.session.user;
         account.email = u.email;
-        account.legalName = u.user_metadata && u.user_metadata.legal_name ? u.user_metadata.legal_name : u.email;
+        account.legalName = u.user_metadata && u.user_metadata.legal_name
+          ? u.user_metadata.legal_name : u.email;
         account.userId = u.id;
-        console.log('Logged in as:', account.email);
-        // Pre-fill account form fields from Supabase session
-        var lnField = document.getElementById('legal-name');
-        var emField = document.getElementById('email');
-        var dnField = document.getElementById('diss-name');
-        var cb = document.getElementById('same-as-legal');
-        if (lnField) lnField.value = account.legalName;
-        if (emField) emField.value = account.email;
-        if (cb && cb.checked && dnField) dnField.value = account.legalName;
+        console.log('Session found:', account.email);
+        showScreen('submit');
+      } else {
+        // No session - redirect back to site to log in
+        console.log('No session - redirecting to login');
+        window.location.href = 'index.html';
       }
+    }).catch(function() {
+      showScreen('submit');
     });
   }
-});
+
+  // Small delay to ensure Supabase SDK is ready
+  setTimeout(initApp, 200);
+});;
 var fileReady = false;
 
 var PASSES = [
@@ -399,7 +432,7 @@ var FLAG_EMOJI = {critical:'🔴', major:'🟠', moderate:'🟡', minor:'🟢', 
 var SEV_ORDER = ['critical','major','moderate','minor','coaching'];
 
 function showScreen(n) {
-  ['account','submit','processing','report'].forEach(function(s){
+  ['account','submit','processing','held','report'].forEach(function(s){
     document.getElementById('screen-'+s).style.display = (s===n)?'block':'none';
   });
   window.scrollTo(0,0);
@@ -435,8 +468,7 @@ function toggleDissName() {
 function submitAccount() {
   var ln = document.getElementById('legal-name').value.trim();
   var em = document.getElementById('email').value.trim();
-  var sameAsLegal = document.getElementById('same-as-legal').checked;
-  var dn = sameAsLegal ? ln : document.getElementById('diss-name').value.trim();
+  var dn = ln; // Use legal name for dissertation name match
   var agreed = document.getElementById('legal-agree').checked;
   var err = document.getElementById('account-error');
   err.style.display = 'none';
@@ -495,13 +527,18 @@ function handleFile(file) {
 
 function fuzzyNameMatch(coverText, name) {
   if (!coverText || !name) return false;
-  var norm = function(s) { return s.toLowerCase().replace(/[^a-z\s]/g,' ').replace(/\s+/g,' ').trim(); };
-  var nc = norm(coverText), nn = norm(name);
+  var nc = coverText.toLowerCase().replace(/[^a-z ]/g,' ').replace(/ +/g,' ').trim();
+  var nn = name.toLowerCase().replace(/[^a-z ]/g,' ').replace(/ +/g,' ').trim();
+  // Check full name
   if (nc.includes(nn)) return true;
-  var words = nn.split(' ').filter(function(w){return w.length>1;});
-  var coverWords = nc.split(' ');
-  var matched = words.filter(function(w){return coverWords.includes(w);});
-  return matched.length >= Math.min(2, words.length);
+  // Check first OR last name - either one is sufficient
+  var parts = nn.split(' ').filter(function(w){ return w.length > 1; });
+  if (parts.length >= 1) {
+    var first = parts[0];
+    var last = parts[parts.length - 1];
+    if (nc.includes(first) || nc.includes(last)) return true;
+  }
+  return false;
 }
 
 function preCheck() {
@@ -610,11 +647,11 @@ function buildPrompt(passId, text, meta) {
 
   var instr = {
     p1: 'Check ONLY the following modules. Return findings only for real, specific issues you find in the text:\n1. grammar (Module 22): grammar errors and passive voice. Per finding: 1-2 sentence fix only, no lengthy explanation.\n2. first_person (Module 13): any use of I, my, me, we, our anywhere in the text.\n3. anthropomorphic (Module 14): studies, articles, frameworks, findings, or literature performing human cognitive actions such as suggest, argue, indicate, show, find, claim, state, note, highlight, assert, demonstrate, prove, support.\n4. ai_detection (Module 23): AI-generated writing patterns including formulaic openers like it is important to note, it is worth mentioning, it is crucial to; excessive hedging; repetitive parallel sentence structure across consecutive sentences.\n\n',
-    p2: 'Check ONLY the following modules:\n1. citation_authority (Module 4): In Ch1-3 the student is NOT the expert — every factual claim requires a citation. In Ch4-5 the student IS the expert — findings from the student\'s own study do not need citations.\n2. dr_touati_model (Module 5): Every cited external study must follow this model: statement + cite → study description with sample size / methodology / key finding (flexible order) → synthesis sentence connecting that study to the student\'s own research purpose. Flag incomplete applications — missing description or missing synthesis.\n3. verb_tense (Module 12): Match tense to submission stage per the context above. Flag will prove, will demonstrate, will show, will confirm as outcome bias regardless of stage. Published external literature always stays in present tense.\n\n',
+    p2: 'Check ONLY the following modules:\n1. citation_authority (Module 4): In Ch1-3 the student is NOT the expert — every factual claim requires a citation. In Ch4-5 the student IS the expert — findings from the student's own study do not need citations.\n2. dr_touati_model (Module 5): Every cited external study must follow this model: statement + cite → study description with sample size / methodology / key finding (flexible order) → synthesis sentence connecting that study to the student's own research purpose. Flag incomplete applications — missing description or missing synthesis.\n3. verb_tense (Module 12): Match tense to submission stage per the context above. Flag will prove, will demonstrate, will show, will confirm as outcome bias regardless of stage. Published external literature always stays in present tense.\n\n',
     p3: 'Check ONLY the following modules (Chapter 1 content):\n1. research_alignment (Module 1): Problem statement → Purpose statement → Methodology → Research Questions must form a diamond — the same core terminology threads through all four. Flag keyword drift, synonym substitution, or concept mismatch between any two components.\n2. problem_statement (Module 8): Must contain all 4 elements: (1) what is wrong in the field, (2) who is affected, (3) at least 3 authors explicitly calling for further research, (4) what specifically is unknown. Flag missing elements.\n3. background (Module 7): Should be approximately 1.5 pages. Must include quantitative or statistical data grounding the problem. Must funnel from general context to specific problem. Flag missing data, excess length, or failure to funnel.\n\n',
     p4: 'Check ONLY the following modules (Chapter 2 content):\n1. lit_review (Module 9): Inverted triangle structure — broad context 10%, domain literature 35%, closely related studies 35%, gap identification 20%. Must present BOTH supporting AND opposing perspectives on the topic. Must explicitly identify the gap the current study addresses. Flag one-sided presentation, missing gap, or structural problems.\n2. theoretical_framework (Module 3): Qualitative study = theoretical framework. Quantitative study = conceptual framework. Must be explicitly named. Must be applied and referenced in ALL chapters, not just Chapter 2. Flag wrong framework type for the methodology, unnamed framework, or framework that disappears after Chapter 2.\n3. lit_currency (Module 21): General literature within 10 years of expected approval. Technology-related literature within 5 years. Working standards within 3 years. 75-80% of references should be recent. Flag clearly outdated sources with their apparent publication year.\n\n',
-    p5: 'Check ONLY the following modules (Chapter 3 content):\n1. methodology_justification (Module 10): Must name and explicitly reject at least 3 alternative methodologies with rationale. Must consider and reject at least 4 research designs with rationale. The selected methodology must be explicitly connected to the purpose statement and research questions. Flag insufficient alternatives, missing rationale, or missing connection to purpose.\n2. scope_limitations (Module 11): Delimitations are the researcher\'s deliberate choices about what to exclude and why. Limitations are external factors outside the researcher\'s control that may affect the study. These are commonly confused or merged. Flag if confused, incorrectly combined, or absent.\n\n',
-    p6: 'Check ONLY the following modules (Chapter 5 content):\n1. ch5_integrity (Module 15): No new literature or new arguments may appear in Chapter 5. Findings must be explicitly connected to the Chapter 2 literature, the theoretical or conceptual framework, and each research question individually. Must include at least 3 future research suggestions that are substantively different from each other in terms of population, methodology, or variable. The purpose statement must be restated verbatim and declared fulfilled or not fulfilled with evidence.\n2. citation_authority expert mode (Module 4): In Chapters 4-5 the student IS the expert conducting original research. Flag over-citation of the student\'s own original findings — their own data and results do not need external citations.\n\n',
+    p5: 'Check ONLY the following modules (Chapter 3 content):\n1. methodology_justification (Module 10): Must name and explicitly reject at least 3 alternative methodologies with rationale. Must consider and reject at least 4 research designs with rationale. The selected methodology must be explicitly connected to the purpose statement and research questions. Flag insufficient alternatives, missing rationale, or missing connection to purpose.\n2. scope_limitations (Module 11): Delimitations are the researcher's deliberate choices about what to exclude and why. Limitations are external factors outside the researcher's control that may affect the study. These are commonly confused or merged. Flag if confused, incorrectly combined, or absent.\n\n',
+    p6: 'Check ONLY the following modules (Chapter 5 content):\n1. ch5_integrity (Module 15): No new literature or new arguments may appear in Chapter 5. Findings must be explicitly connected to the Chapter 2 literature, the theoretical or conceptual framework, and each research question individually. Must include at least 3 future research suggestions that are substantively different from each other in terms of population, methodology, or variable. The purpose statement must be restated verbatim and declared fulfilled or not fulfilled with evidence.\n2. citation_authority expert mode (Module 4): In Chapters 4-5 the student IS the expert conducting original research. Flag over-citation of the student's own original findings — their own data and results do not need external citations.\n\n',
     p7: 'Check ONLY the following modules (References section):\n1. apa_references (Module 25): APA 7th edition format. Flag violations in: author last name comma initials; publication year in parentheses; article title in sentence case not title case; journal name italicized; volume number italicized; issue number in parentheses not italicized; page range; DOI formatted as https://doi.org/xxxxx. Identify specific references with specific violations.\n2. citation_crossmatch (Module 26): Identify patterns suggesting in-text citations that do not appear in the reference list, or reference list entries that are not cited in the text.\n\n',
     p8: 'Full document pass. Check ONLY the following modules across the entire document:\n1. verbatim_consistency (Module 6): The purpose statement and the specific problem statement must appear word-for-word identical every time they appear anywhere in the document. Flag any instance where either statement has been paraphrased, shortened, reworded, or altered in any way. Show the discrepancy.\n2. rq_development (Module 2): Each research question must be focused on one issue, feasible to answer within the study timeframe, and directly traceable to the stated purpose. No yes-or-no questions. Qualitative RQs ask about experiences, perceptions, and meaning. Quantitative RQs ask about relationships, correlations, and effects. Flag questions that are too broad, unanswerable, misaligned with methodology, or phrased as yes-no questions.\n3. abstract (Module 16): Must contain all 5 required elements: (1) statement of the problem, (2) statement of purpose, (3) methodology and research design, (4) findings or anticipated findings, (5) keywords. Keywords must be italicized. Flag any missing element.\n\n'
   };
@@ -676,8 +713,16 @@ function runAllPasses() {
       updateProgress(total, total);
       setTimeout(function(){
         buildReport();
-        showScreen('report');
-        postSubmissionToSupabase();
+        postSubmissionToSupabase().then(function(held) {
+          if (held) {
+            showScreen('held');
+          } else {
+            showScreen('report');
+          }
+        }).catch(function() {
+          // If Supabase fails, show report anyway
+          showScreen('report');
+        });
       }, 600);
       return;
     }
@@ -927,6 +972,9 @@ async function postSubmissionToSupabase() {
 
     var submissionId = subRes.data.id;
     console.log('Submission posted:', submissionId);
+    // Set held email display
+    var heldEmailEl = document.getElementById('held-email');
+    if (heldEmailEl) heldEmailEl.textContent = account.email;
 
     // Post findings
     if (allFindings.length > 0) {
@@ -959,8 +1007,11 @@ async function postSubmissionToSupabase() {
       console.log('Admin notification sent');
     }
 
+    return holdAll; // true = show held screen, false = show report
+
   } catch(err) {
     console.error('postSubmissionToSupabase error:', err);
+    return false;
   }
 }
 </script>
