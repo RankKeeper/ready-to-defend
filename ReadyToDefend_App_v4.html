@@ -524,6 +524,11 @@ function handleFile(file) {
   }
   err.style.display = 'none';
   fileReady = false;
+
+  // Disable submit button while parsing so user cannot fire preCheck too early
+  var submitBtn = document.querySelector('#screen-submit .btn-primary');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Parsing document...'; }
+
   document.getElementById('file-name-display').textContent = file.name;
   document.getElementById('file-wc').textContent = '(parsing...)';
   document.getElementById('file-display').style.display = 'flex';
@@ -533,10 +538,10 @@ function handleFile(file) {
   // Store base64 of original file for sending as attachment
   var fileB64Reader = new FileReader();
   fileB64Reader.onload = function(ev) {
-    window._docBase64 = ev.target.result.split(',')[1]; // strip data:...;base64,
-    window._docFileName = uploadedFile ? uploadedFile.name : 'dissertation.docx';
+    window._docBase64 = ev.target.result.split(',')[1];
+    window._docFileName = file.name;
   };
-  fileB64Reader.readAsDataURL(uploadedFile);
+  fileB64Reader.readAsDataURL(file);
 
   var reader = new FileReader();
   reader.onload = function(e) {
@@ -548,14 +553,20 @@ function handleFile(file) {
       document.getElementById('upload-icon').textContent = 'Ready';
       document.getElementById('upload-text').textContent = file.name + ' -- ready to submit';
       document.getElementById('upload-zone').classList.add('has-file');
+      // Re-enable submit button now that parsing is complete
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Run Dissertation Review -->'; }
     }).catch(function() {
       docText = ''; fileReady = false;
       document.getElementById('file-wc').textContent = '(parse failed)';
       document.getElementById('upload-icon').textContent = 'Error';
       document.getElementById('upload-text').textContent = 'Could not parse this file. Please ensure it is a valid .docx file.';
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Run Dissertation Review -->'; }
     });
   };
-  reader.onerror = function() { docText = ''; fileReady = false; };
+  reader.onerror = function() {
+    docText = ''; fileReady = false;
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Run Dissertation Review -->'; }
+  };
   reader.readAsArrayBuffer(file);
 }
 
