@@ -185,12 +185,12 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);min-hei
     <div id="ll" style="display:none;font-size:22px;font-weight:400;color:var(--navy);font-family:Georgia,serif;text-align:center">Ready To Defend</div>
   </div>
   <div class="login-title">Admin Console</div>
-  <div class="login-sub">Jennifer Touati, EdD &nbsp;·&nbsp; Education Under Construction LLC</div>
+  <div class="login-sub">Jennifer Touati, EdD &nbsp; | &nbsp; Education Under Construction LLC</div>
   <div class="field"><label>Email</label><input type="email" id="le" value="drtouati@euc2.org"></div>
   <div class="field"><label>Password</label><input type="password" id="lp" placeholder="Your password"></div>
   <div id="lerr" class="err-box"></div>
   <button class="btn btn-navy" onclick="doLogin()">Sign In to Admin Console</button>
-  <div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:1rem">Ready To Defend Admin &nbsp;·&nbsp; Education Under Construction LLC</div>
+  <div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:1rem">Ready To Defend Admin &nbsp; | &nbsp; Education Under Construction LLC</div>
 </div>
 </div>
 </div>
@@ -203,7 +203,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);min-hei
     <img src="ready_to_defend_logo.png" alt="RTD" class="topbar-logo" onerror="this.style.display='none'">
     <div>
       <div class="topbar-name">Admin Console</div>
-      <div class="topbar-sub">Ready To Defend &nbsp;·&nbsp; Education Under Construction LLC</div>
+      <div class="topbar-sub">Ready To Defend &nbsp; | &nbsp; Education Under Construction LLC</div>
     </div>
   </div>
   <div class="topbar-right">
@@ -421,52 +421,58 @@ function loadQ(status) {
   if (!sb) return;
   var lid = status==='released'?'list-released':status==='all'?'list-all':'list-held';
   var el = document.getElementById(lid);
-  el.innerHTML = '<div class="empty"><div class="empty-ico">⏳</div><div class="empty-t">Loading...</div></div>';
-  var q = sb.schema('rtd').from('admin_queue').select('*');
-  if (status!=='all') q = q.eq('report_status',status);
-  q.order('created_at',{ascending:false}).limit(100).then(function(r) {
+  el.innerHTML = '<div class="empty"><div class="empty-ico">&#x23F3;</div><div class="empty-t">Loading...</div></div>';
+  // Query submissions joined with profiles for name/email
+  var q = sb.schema('rtd').from('submissions').select('*, profiles(legal_name, email)');
+  if (status !== 'all') q = q.eq('report_status', status);
+  q.order('created_at', {ascending:false}).limit(100).then(function(r) {
     if (r.error) { el.innerHTML='<div class="empty"><div class="empty-t">Error: '+xss(r.error.message)+'</div></div>'; return; }
-    if (!r.data||!r.data.length) {
-      var msgs={held:'No reports held for review',released:'No released reports',all:'No submissions yet'};
-      el.innerHTML='<div class="empty"><div class="empty-ico">📭</div><div class="empty-t">'+msgs[status]+'</div></div>'; return;
+    if (!r.data || !r.data.length) {
+      var msgs = {held:'No reports held for review', released:'No released reports', all:'No submissions yet'};
+      el.innerHTML = '<div class="empty"><div class="empty-ico">&#x1F4ED;</div><div class="empty-t">'+msgs[status]+'</div></div>'; return;
     }
     el.innerHTML = r.data.map(function(row) {
-      var sc = row.admin_flagged?'flagged':row.report_status==='held'?'held':row.report_status==='released'?'released':'';
-      var sbd = row.report_status==='held'?'<span class="sb sb-held">Held</span>':
-                row.report_status==='released'?'<span class="sb sb-released">Released</span>':
-                row.report_status==='processing'?'<span class="sb sb-proc">Processing</span>':
-                '<span class="sb sb-flag">Flagged</span>';
+      var nm   = xss((row.profiles && row.profiles.legal_name) || '');
+      var em   = xss((row.profiles && row.profiles.email) || '');
+      var deg  = xss(row.degree_type || '');
+      var meth = xss(row.methodology || '');
+      var sid  = xss(row.id || '');
+      var sc   = row.admin_flagged ? 'flagged' : row.report_status==='held' ? 'held' : row.report_status==='released' ? 'released' : '';
+      var sbd  = row.report_status==='held'      ? '<span class="sb sb-held">Held</span>' :
+                 row.report_status==='released'   ? '<span class="sb sb-released">Released</span>' :
+                 row.report_status==='processing' ? '<span class="sb sb-proc">Processing</span>' :
+                 '<span class="sb sb-flag">Flagged</span>';
       var fps = '';
-      if (row.flag_count_critical>0) fps+='<span class="fp fp-c">🔴 '+row.flag_count_critical+'</span>';
-      if (row.flag_count_major>0) fps+='<span class="fp fp-m">🟠 '+row.flag_count_major+'</span>';
-      if (row.flag_count_moderate>0) fps+='<span class="fp fp-mod">🟡 '+row.flag_count_moderate+'</span>';
-      if (row.flag_count_minor>0) fps+='<span class="fp fp-mi">🟢 '+row.flag_count_minor+'</span>';
-      if (!fps) fps='<span style="font-size:11px;color:var(--text-3)">No flags</span>';
-      var sid=xss(row.submission_id);
-      var nm=xss(row.legal_name||'');
-      var deg=xss(row.degree_type||'');
-      var meth=xss(row.methodology||'');
-      var dt=new Date(row.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+      if (row.flag_count_critical > 0) fps += '<span class="fp fp-c">&#x1F534; '+row.flag_count_critical+'</span>';
+      if (row.flag_count_major > 0)    fps += '<span class="fp fp-m">&#x1F7E0; '+row.flag_count_major+'</span>';
+      if (row.flag_count_moderate > 0) fps += '<span class="fp fp-mod">&#x1F7E1; '+row.flag_count_moderate+'</span>';
+      if (row.flag_count_minor > 0)    fps += '<span class="fp fp-mi">&#x1F7E2; '+row.flag_count_minor+'</span>';
+      if (!fps) fps = '<span style="font-size:11px;color:var(--text-3)">No flags</span>';
+      var dt  = new Date(row.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+      var chs = Array.isArray(row.chapters_submitted) ? row.chapters_submitted.join(', ') : (row.chapters_submitted || '--');
+      // Release button: grey/disabled once released, green when held
+      var releaseBtn = row.report_status === 'held'
+        ? '<button class="btn btn-success btn-sm" onclick="qRelease(''+sid+'')">Release &#x2713;</button>'
+        : '<button class="btn btn-sm" style="background:#e2e4e9;color:#aaa;cursor:default" disabled>Released</button>';
       return '<div class="qr '+sc+'">' +
-        '<div><div class="sname">'+nm+'</div><div class="semail">'+xss(row.email||'')+'</div><div class="smeta">'+deg+' · '+meth+' · Sub #'+(row.submission_number||1)+'</div></div>'+
-        '<div style="font-size:12px;color:var(--text-2)">'+xss((row.chapters_submitted||[]).join(', ') || '—')+'<div style="font-size:11px;color:var(--text-3)">'+dt+'</div></div>'+
+        '<div><div class="sname">'+nm+'</div><div class="semail">'+em+'</div><div class="smeta">'+deg+'     |     '+meth+'     |     Sub #'+(row.submission_number||1)+'</div></div>'+
+        '<div style="font-size:12px;color:var(--text-2)">'+xss(chs)+'<div style="font-size:11px;color:var(--text-3)">'+dt+'</div></div>'+
         '<div><div class="flag-pills">'+fps+'</div></div>'+
         '<div>'+sbd+'</div>'+
         '<div class="row-acts">'+
-          '<button class="btn btn-outline btn-sm" onclick="openM(\''+sid+'\',\''+nm+'\',\''+deg+'\',\''+meth+'\','+(row.flag_count_critical||0)+','+(row.flag_count_major||0)+','+(row.flag_count_moderate||0)+','+(row.flag_count_minor||0)+','+(row.flag_count_coaching||0)+')">Preview</button>'+
-          (row.report_status==='held'?'<button class="btn btn-success btn-sm" onclick="qRelease(\''+sid+'\')">Release ✓</button>':'')+
+          '<button class="btn btn-outline btn-sm" onclick="openM(''+sid+'',''+nm+'',''+deg+'',''+meth+'','+(row.flag_count_critical||0)+','+(row.flag_count_major||0)+','+(row.flag_count_moderate||0)+','+(row.flag_count_minor||0)+','+(row.flag_count_coaching||0)+')">Preview</button>'+
+          releaseBtn +
         '</div>'+
       '</div>';
     }).join('');
   });
 }
-
 function loadFlags() {
   if (!sb) return;
   var el = document.getElementById('list-flags');
-  el.innerHTML = '<div class="empty"><div class="empty-ico">⏳</div><div class="empty-t">Loading...</div></div>';
+  el.innerHTML = '<div class="empty"><div class="empty-ico">...</div><div class="empty-t">Loading...</div></div>';
   sb.schema('rtd').from('name_flag_log').select('*').eq('resolved',false).order('created_at',{ascending:false}).then(function(r) {
-    if (!r.data||!r.data.length) { el.innerHTML='<div class="empty"><div class="empty-ico">🛡️</div><div class="empty-t">No account flags</div></div>'; return; }
+    if (!r.data||!r.data.length) { el.innerHTML='<div class="empty"><div class="empty-ico">🛡</div><div class="empty-t">No account flags</div></div>'; return; }
     el.innerHTML=r.data.map(function(row){
       return '<div class="flr"><div><div style="font-weight:500">'+xss(row.account_name||'')+'</div><div style="font-size:11px;color:var(--text-3)">'+(row.ip_address||'')+'</div></div>'+
         '<div>'+xss(row.account_name||'')+'</div>'+
@@ -480,14 +486,14 @@ function loadFlags() {
 function loadStudents() {
   if (!sb) return;
   var el = document.getElementById('list-students');
-  el.innerHTML = '<div class="empty"><div class="empty-ico">⏳</div><div class="empty-t">Loading...</div></div>';
+  el.innerHTML = '<div class="empty"><div class="empty-ico">...</div><div class="empty-t">Loading...</div></div>';
   sb.schema('rtd').from('profiles').select('*').order('created_at',{ascending:false}).then(function(r) {
     if (!r.data||!r.data.length) { el.innerHTML='<div class="empty"><div class="empty-ico">👥</div><div class="empty-t">No students yet</div></div>'; return; }
     el.innerHTML=r.data.map(function(row){
       var sc=row.account_status||'active';
       var col=sc==='active'?'var(--green)':sc==='flagged'?'var(--orange)':'var(--red)';
       return '<div class="str"><div><div style="font-weight:500">'+xss(row.legal_name||'')+'</div><div style="font-size:11px;color:var(--text-3)">'+xss(row.email||'')+'</div></div>'+
-        '<div style="font-size:12px">—</div><div style="font-size:12px">—</div>'+
+        '<div style="font-size:12px">--</div><div style="font-size:12px">--</div>'+
         '<div style="font-size:12px">'+(row.total_submissions||0)+' subs</div>'+
         '<div><span style="font-size:12px;font-weight:500;color:'+col+'">'+sc+'</span></div></div>';
     }).join('');
@@ -497,7 +503,7 @@ function loadStudents() {
 function openM(id, name, deg, meth, c, m, mod, mi, co) {
   curSubId = id;
   document.getElementById('mod-name').textContent = name;
-  document.getElementById('mod-meta').textContent = deg + ' · ' + meth;
+  document.getElementById('mod-meta').textContent = deg + '     |     ' + meth;
   document.getElementById('mc').textContent = c;
   document.getElementById('mm').textContent = m;
   document.getElementById('mmod').textContent = mod;
@@ -518,7 +524,7 @@ function loadFindings(sid) {
     el.innerHTML=r.data.map(function(f){
       return '<div class="finding-row">'+
         '<div class="fr-flag">'+(sev[f.severity]||'🔵')+'</div>'+
-        '<div class="fr-issue"><div class="fr-mod">'+xss(f.module_name||'')+(f.section?' · '+xss(f.section):'')+'</div>'+
+        '<div class="fr-issue"><div class="fr-mod">'+xss(f.module_name||'')+(f.section?'     |     '+xss(f.section):'')+'</div>'+
         (f.passage?'<div class="fr-pass">"'+xss(f.passage)+'"</div>':'')+
         '<div style="font-size:12px;margin-top:4px"><strong>Analysis:</strong> '+xss(f.issue||'')+'</div></div>'+
         '<div class="fr-note"><div class="fr-notelabel">Dr. Touati\'s Note</div>'+xss(f.coaching||'')+'</div>'+
@@ -532,7 +538,7 @@ function closeM() { document.getElementById('mod').classList.remove('on'); curSu
 function saveNote() {
   if (!sb||!curSubId) return;
   sb.schema('rtd').from('submissions').update({admin_notes:document.getElementById('mod-notes').value}).eq('id',curSubId).then(function(r){
-    if (!r.error) { var b=document.querySelector('.modal-ft .btn-outline[onclick="saveNote()"]'); if(b){b.textContent='Saved ✓';setTimeout(function(){b.textContent='Save Note';},2000);} }
+    if (!r.error) { var b=document.querySelector('.modal-ft .btn-outline[onclick="saveNote()"]'); if(b){b.textContent='Saved v';setTimeout(function(){b.textContent='Save Note';},2000);} }
   });
 }
 
