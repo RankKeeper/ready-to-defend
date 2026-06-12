@@ -520,7 +520,7 @@ footer a:hover{text-decoration:underline}
   </div>
 </div>
 
-<div id="screen-success" class="screen">
+<div id="screen-success" class="screen" style="display:none!important">
   <div class="success-wrap">
     <div class="success-card">
       <div class="success-icon">&#x2705;</div>
@@ -680,9 +680,7 @@ function submitLogin() {
         if (pr.data && pr.data.length > 0) {
           // Has active purchase - go straight to app
           currentUser.plan = pr.data[0].plan_id;
-          document.getElementById('success-name').textContent = currentUser.name.split(' ')[0];
-          document.getElementById('success-email').textContent = em;
-          showScreen('success');
+          goToApp();
         } else {
           // No purchase - go to plan selection
           var el = document.getElementById('plan-welcome-name'); if(el) el.textContent = currentUser.name.split(' ')[0];
@@ -706,19 +704,9 @@ function signOut() {
 }
 
 function goToApp() {
-  if (supabaseClient) {
-    supabaseClient.auth.getSession().then(function(r) {
-      if (r.data && r.data.session) {
-        var token = r.data.session.access_token;
-        var refresh = r.data.session.refresh_token;
-        window.location.href = 'ReadyToDefend_App_v4.html?token=' + encodeURIComponent(token) + '&refresh=' + encodeURIComponent(refresh);
-      } else {
-        window.location.href = 'ReadyToDefend_App_v4.html';
-      }
-    });
-  } else {
-    window.location.href = 'ReadyToDefend_App_v4.html';
-  }
+  // Session is shared via Supabase localStorage on same domain
+  // No need to pass tokens - just redirect
+  window.location.href = 'ReadyToDefend_App_v4.html';
 }
 
 window.addEventListener('load', function() {
@@ -768,19 +756,26 @@ window.addEventListener('load', function() {
             body: { session_id: sessionId }
           }).then(function(r) {
             console.log('verify-payment result:', r);
-            if (r.data && r.data.plan_id) {
-              currentUser.plan = r.data.plan_id;
-            }
           }).catch(function(e) {
             console.error('verify-payment error:', e);
           });
         }
-        var el = document.getElementById('success-name');
-        if(el) el.textContent = currentUser.name ? currentUser.name.split(' ')[0] : 'there';
-        el = document.getElementById('success-email');
-        if(el) el.textContent = currentUser.email;
-        showScreen('success');
-        window.history.replaceState({}, document.title, window.location.pathname);
+        // Go straight to app with session token - wait for session to be ready
+        setTimeout(function() {
+          if (supabaseClient) {
+            supabaseClient.auth.getSession().then(function(sr) {
+              if (sr.data && sr.data.session) {
+                var token = sr.data.session.access_token;
+                var refresh = sr.data.session.refresh_token;
+                window.location.href = 'ReadyToDefend_App_v4.html?token=' + encodeURIComponent(token) + '&refresh=' + encodeURIComponent(refresh);
+              } else {
+                window.location.href = 'ReadyToDefend_App_v4.html';
+              }
+            });
+          } else {
+            window.location.href = 'ReadyToDefend_App_v4.html';
+          }
+        }, 1500);
       }
     });
   } else { console.log('Supabase not available - offline mode'); }
