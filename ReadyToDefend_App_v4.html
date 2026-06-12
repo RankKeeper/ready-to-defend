@@ -704,7 +704,7 @@ function buildPrompt(passId, text, meta) {
 }
 
 function callAPI(prompt, passId) {
-  dbg('Calling API for ' + passId + ' | prompt length: ' + prompt.length + ' chars');
+  dbg('[' + passId + '] Starting API call...');
   return fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -721,70 +721,46 @@ function callAPI(prompt, passId) {
     })
   })
   .then(function(resp) {
-    dbg('HTTP ' + resp.status + ' for ' + passId);
-    if (!resp.ok) return resp.text().then(function(t){throw new Error('HTTP '+resp.status+': '+t.substring(0,200));});
+    dbg('[' + passId + '] HTTP status: ' + resp.status);
+    if (!resp.ok) {
+      return resp.text().then(function(t) {
+        var msg = 'HTTP ' + resp.status + ': ' + t.substring(0,300);
+        dbg('[' + passId + '] ERROR: ' + msg);
+        throw new Error(msg);
+      });
+    }
     return resp.json();
   })
   .then(function(data) {
+    if (!data.content) {
+      dbg('[' + passId + '] ERROR: No content in response. Full: ' + JSON.stringify(data).substring(0,200));
+      return [];
+    }
     var raw = data.content.map(function(c){return c.type==='text'?c.text:'';}).join('').trim();
-    dbg('Response for ' + passId + ': ' + raw.length + ' chars | start: ' + raw.substring(0,60));
+    dbg('[' + passId + '] Response length: ' + raw.length + ' chars');
+    dbg('[' + passId + '] First 150: ' + raw.substring(0,150));
     var clean = raw.replace(/```json/gi,'').replace(/```/g,'').trim();
-    var start = clean.indexOf('['), end = clean.lastIndexOf(']');
-    if (start === -1 || end === -1) { dbg('No JSON array in response for ' + passId); return []; }
+    var start2 = clean.indexOf('['), end2 = clean.lastIndexOf(']');
+    if (start2 === -1 || end2 === -1) {
+      dbg('[' + passId + '] WARNING: No JSON array. Response: ' + raw.substring(0,300));
+      return [];
+    }
     try {
-      var parsed = JSON.parse(clean.substring(start, end+1));
-      dbg('Parsed ' + parsed.length + ' findings for ' + passId);
+      var parsed = JSON.parse(clean.substring(start2, end2+1));
+      dbg('[' + passId + '] SUCCESS: ' + parsed.length + ' findings');
       return Array.isArray(parsed) ? parsed : [];
     } catch(e) {
-      dbg('JSON parse error for ' + passId + ': ' + e.message);
+      dbg('[' + passId + '] JSON parse error: ' + e.message);
       return [];
     }
   })
   .catch(function(e) {
-    dbg('Error for ' + passId + ': ' + e.message);
+    dbg('[' + passId + '] FETCH ERROR: ' + e.message);
+    var lbl = document.getElementById('current-pass-label');
+    if (lbl) lbl.style.color = 'red';
+    if (lbl) lbl.textContent = 'API Error [' + passId + ']: ' + e.message;
     return [];
   });
-}
-
-function runAllPasses() {
-  var rel = getRelevantPasses();
-  var total = rel.length, done = 0;
-
-  function next(i) {
-    if (i >= rel.length) {
-      document.getElementById('current-pass-label').textContent = 'All passes complete -- generating report...';
-      updateProgress(total, total);
-      setTimeout(function(){
-        buildReport();
-        console.log('allFindings count before post:', allFindings.length);
-        postSubmissionToSupabase().then(function(held) {
-          if (held) {
-            showScreen('held');
-          } else {
-            showScreen('report');
-          }
-        }).catch(function() {
-          // If Supabase fails, show report anyway
-          showScreen('report');
-        });
-      }, 600);
-      return;
-    }
-    var pid = rel[i];
-    setPassState(pid, 'running');
-    document.getElementById('current-pass-label').textContent =
-      PASSES.find(function(p){return p.id===pid;}).name + '...';
-    updateProgress(done, total);
-
-    callAPI(buildPrompt(pid, docText, submissionMeta), pid).then(function(findings) {
-      allFindings = allFindings.concat(findings);
-      setPassState(pid, 'done');
-      done++;
-      updateProgress(done, total);
-      setTimeout(function(){ next(i+1); }, 300);
-    });
-  }
-  next(0);
 }
 
 function buildReport() {
