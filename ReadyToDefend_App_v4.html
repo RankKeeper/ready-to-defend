@@ -408,14 +408,14 @@ window.addEventListener('load', function() {
         console.log('Session ready:', account.email);
         showScreen('submit');
       } else {
-        console.log('No session — redirecting to login');
+        console.log('No session -- redirecting to login');
         window.location.href = 'index.html';
       }
     }
 
     if (urlToken && urlRefresh) {
-      // Token path (post-payment redirect) — set session explicitly
-      console.log('Token found in URL — calling setSession');
+      // Token path (post-payment redirect) -- set session explicitly
+      console.log('Token found in URL -- calling setSession');
       // Clean URL so tokens don't linger in browser history
       window.history.replaceState({}, document.title, window.location.pathname);
       sbClient.auth.setSession({
@@ -427,7 +427,7 @@ window.addEventListener('load', function() {
         resolveSession(null);
       });
     } else {
-      // Path 2: normal login redirect — session is already in localStorage
+      // Path 2: normal login redirect -- session is already in localStorage
       // onAuthStateChange fires after SDK hydrates from storage
       var settled = false;
       var sub = sbClient.auth.onAuthStateChange(function(event, session) {
@@ -453,14 +453,14 @@ window.addEventListener('load', function() {
 var fileReady = false;
 
 var PASSES = [
-  {id:'p1', name:'Pass 1 — Grammar, First Person, Anthropomorphic, AI Detection'},
-  {id:'p2', name:'Pass 2 — Citation Authority, Citation Model, Verb Tense'},
-  {id:'p3', name:'Pass 3 — Research Alignment, Problem Statement, Background'},
-  {id:'p4', name:'Pass 4 — Literature Review, Framework, Currency'},
-  {id:'p5', name:'Pass 5 — Methodology, Scope, Limitations'},
-  {id:'p6', name:'Pass 6 — Chapter 5 Integrity, Expert Citation'},
-  {id:'p7', name:'Pass 7 — APA 7 References, Citation Cross-Match'},
-  {id:'p8', name:'Pass 8 — Verbatim Consistency, RQ Development, Abstract'},
+  {id:'p1', name:'Pass 1 -- Grammar, First Person, Anthropomorphic, AI Detection'},
+  {id:'p2', name:'Pass 2 -- Citation Authority, Citation Model, Verb Tense'},
+  {id:'p3', name:'Pass 3 -- Research Alignment, Problem Statement, Background'},
+  {id:'p4', name:'Pass 4 -- Literature Review, Framework, Currency'},
+  {id:'p5', name:'Pass 5 -- Methodology, Scope, Limitations'},
+  {id:'p6', name:'Pass 6 -- Chapter 5 Integrity, Expert Citation'},
+  {id:'p7', name:'Pass 7 -- APA 7 References, Citation Cross-Match'},
+  {id:'p8', name:'Pass 8 -- Verbatim Consistency, RQ Development, Abstract'},
 ];
 var FLAG_EMOJI = {critical:'🔴', major:'🟠', moderate:'🟡', minor:'🟢', coaching:'🔵'};
 var SEV_ORDER = ['critical','major','moderate','minor','coaching'];
@@ -476,7 +476,7 @@ function dbg(msg) {
   var el = document.getElementById('debug-box');
   if (!el) return;
   el.style.display = 'block';
-  el.textContent += new Date().toLocaleTimeString() + ' — ' + msg + '\n';
+  el.textContent += new Date().toLocaleTimeString() + ' -- ' + msg + '\n';
   el.scrollTop = el.scrollHeight;
 }
 
@@ -546,7 +546,7 @@ function handleFile(file) {
       fileReady = wc > 100;
       document.getElementById('file-wc').textContent = '(' + wc.toLocaleString() + ' words extracted)';
       document.getElementById('upload-icon').textContent = 'Ready';
-      document.getElementById('upload-text').textContent = file.name + ' — ready to submit';
+      document.getElementById('upload-text').textContent = file.name + ' -- ready to submit';
       document.getElementById('upload-zone').classList.add('has-file');
     }).catch(function() {
       docText = ''; fileReady = false;
@@ -657,20 +657,20 @@ function setPassState(id, state) {
   var name = document.getElementById('pn-'+id);
   if (!icon) return;
   icon.className = 'pass-icon pass-'+state;
-  if (state==='running') { name.classList.add('active'); icon.textContent='●'; }
-  else if (state==='done') { name.classList.remove('active'); icon.textContent='✓'; }
+  if (state==='running') { name.classList.add('active'); icon.textContent='*'; }
+  else if (state==='done') { name.classList.remove('active'); icon.textContent='v'; }
 }
 
 function updateProgress(done, total) {
   document.getElementById('progress-bar').style.width = Math.round((done/total)*100)+'%';
 }
 
-var SYSTEM_PROMPT = 'You are the Ready To Defend dissertation review engine, built on the proprietary methodology of Dr. Jennifer Touati, EdD.\n\nYour ONLY output must be a raw JSON array. No markdown, no code fences, no preamble, no explanation. Begin your response with [ and end with ].\n\nEach finding object in the array:\n{\n  "chapter": "Chapter 1",\n  "section": "Background of the Problem",\n  "module": "anthropomorphic",\n  "moduleName": "Anthropomorphic Statements",\n  "severity": "critical|major|moderate|minor|coaching",\n  "passage": "REQUIRED — copy the exact sentence or phrase from the dissertation that triggered this flag. Up to 60 words. If the issue is document-wide (e.g. no title page), write: [Document-wide issue — no specific passage]",\n  "issue": "What is wrong and what rule applies. 2-3 sentences.",\n  "coaching": "Dr. Touati coaching comment in her voice. WHY it matters for defense. What to do. Vary the delivery."\n}\n\nSEVERITY:\n- critical: must fix before defense; committee sends it back\n- major: significant weakness undermining the research\n- moderate: needs attention; will get flagged but not a fail\n- minor: polish item; will not stop the defense\n- coaching: Dr. Touati observation, not an error\n\nReturn [] if no issues found for the modules being checked.';
+var SYSTEM_PROMPT = 'You are the Ready To Defend dissertation review engine, built on the proprietary methodology of Dr. Jennifer Touati, EdD.\n\nYour ONLY output must be a raw JSON array. No markdown, no code fences, no preamble, no explanation. Begin your response with [ and end with ].\n\nEach finding object in the array:\n{\n  "chapter": "Chapter 1",\n  "section": "Background of the Problem",\n  "module": "anthropomorphic",\n  "moduleName": "Anthropomorphic Statements",\n  "severity": "critical|major|moderate|minor|coaching",\n  "passage": "REQUIRED -- copy the exact sentence or phrase from the dissertation that triggered this flag. Up to 60 words. If the issue is document-wide (e.g. no title page), write: [Document-wide issue -- no specific passage]",\n  "issue": "What is wrong and what rule applies. 2-3 sentences.",\n  "coaching": "Dr. Touati coaching comment in her voice. WHY it matters for defense. What to do. Vary the delivery."\n}\n\nSEVERITY:\n- critical: must fix before defense; committee sends it back\n- major: significant weakness undermining the research\n- moderate: needs attention; will get flagged but not a fail\n- minor: polish item; will not stop the defense\n- coaching: Dr. Touati observation, not an error\n\nReturn [] if no issues found for the modules being checked.';
 
 function buildPrompt(passId, text, meta) {
   var stage = meta.subType === 'proposal'
-    ? 'PROPOSAL — Chapters 1-3 only, future tense required in Ch1-3, past tense NOT appropriate'
-    : 'COMPLETE DISSERTATION — Chapters 1-5, past tense required throughout Ch1-5';
+    ? 'PROPOSAL -- Chapters 1-3 only, future tense required in Ch1-3, past tense NOT appropriate'
+    : 'COMPLETE DISSERTATION -- Chapters 1-5, past tense required throughout Ch1-5';
   var ctx = 'SUBMISSION CONTEXT: ' + stage +
     ' | Degree: ' + meta.degree +
     ' | Methodology: ' + meta.methodology +
@@ -679,11 +679,11 @@ function buildPrompt(passId, text, meta) {
 
   var instr = {
     p1: 'Check ONLY the following modules. Return findings only for real, specific issues you find in the text:\n1. grammar (Module 22): grammar errors and passive voice. Per finding: 1-2 sentence fix only, no lengthy explanation.\n2. first_person (Module 13): any use of I, my, me, we, our anywhere in the text.\n3. anthropomorphic (Module 14): studies, articles, frameworks, findings, or literature performing human cognitive actions such as suggest, argue, indicate, show, find, claim, state, note, highlight, assert, demonstrate, prove, support.\n4. ai_detection (Module 23): AI-generated writing patterns including formulaic openers like it is important to note, it is worth mentioning, it is crucial to; excessive hedging; repetitive parallel sentence structure across consecutive sentences.\n\n',
-    p2: 'Check ONLY the following modules:\n1. citation_authority (Module 4): In Ch1-3 the student is NOT the expert — every factual claim requires a citation. In Ch4-5 the student IS the expert — findings from the student\'s own study do not need citations.\n2. dr_touati_model (Module 5): Every cited external study must follow this model: statement + cite → study description with sample size / methodology / key finding (flexible order) → synthesis sentence connecting that study to the student\'s own research purpose. Flag incomplete applications — missing description or missing synthesis.\n3. verb_tense (Module 12): Match tense to submission stage per the context above. Flag will prove, will demonstrate, will show, will confirm as outcome bias regardless of stage. Published external literature always stays in present tense.\n\n',
-    p3: 'Check ONLY the following modules (Chapter 1 content):\n1. research_alignment (Module 1): Problem statement → Purpose statement → Methodology → Research Questions must form a diamond — the same core terminology threads through all four. Flag keyword drift, synonym substitution, or concept mismatch between any two components.\n2. problem_statement (Module 8): Must contain all 4 elements: (1) what is wrong in the field, (2) who is affected, (3) at least 3 authors explicitly calling for further research, (4) what specifically is unknown. Flag missing elements.\n3. background (Module 7): Should be approximately 1.5 pages. Must include quantitative or statistical data grounding the problem. Must funnel from general context to specific problem. Flag missing data, excess length, or failure to funnel.\n\n',
-    p4: 'Check ONLY the following modules (Chapter 2 content):\n1. lit_review (Module 9): Inverted triangle structure — broad context 10%, domain literature 35%, closely related studies 35%, gap identification 20%. Must present BOTH supporting AND opposing perspectives on the topic. Must explicitly identify the gap the current study addresses. Flag one-sided presentation, missing gap, or structural problems.\n2. theoretical_framework (Module 3): Qualitative study = theoretical framework. Quantitative study = conceptual framework. Must be explicitly named. Must be applied and referenced in ALL chapters, not just Chapter 2. Flag wrong framework type for the methodology, unnamed framework, or framework that disappears after Chapter 2.\n3. lit_currency (Module 21): General literature within 10 years of expected approval. Technology-related literature within 5 years. Working standards within 3 years. 75-80% of references should be recent. Flag clearly outdated sources with their apparent publication year.\n\n',
+    p2: 'Check ONLY the following modules:\n1. citation_authority (Module 4): In Ch1-3 the student is NOT the expert -- every factual claim requires a citation. In Ch4-5 the student IS the expert -- findings from the student\'s own study do not need citations.\n2. dr_touati_model (Module 5): Every cited external study must follow this model: statement + cite -> study description with sample size / methodology / key finding (flexible order) -> synthesis sentence connecting that study to the student\'s own research purpose. Flag incomplete applications -- missing description or missing synthesis.\n3. verb_tense (Module 12): Match tense to submission stage per the context above. Flag will prove, will demonstrate, will show, will confirm as outcome bias regardless of stage. Published external literature always stays in present tense.\n\n',
+    p3: 'Check ONLY the following modules (Chapter 1 content):\n1. research_alignment (Module 1): Problem statement -> Purpose statement -> Methodology -> Research Questions must form a diamond -- the same core terminology threads through all four. Flag keyword drift, synonym substitution, or concept mismatch between any two components.\n2. problem_statement (Module 8): Must contain all 4 elements: (1) what is wrong in the field, (2) who is affected, (3) at least 3 authors explicitly calling for further research, (4) what specifically is unknown. Flag missing elements.\n3. background (Module 7): Should be approximately 1.5 pages. Must include quantitative or statistical data grounding the problem. Must funnel from general context to specific problem. Flag missing data, excess length, or failure to funnel.\n\n',
+    p4: 'Check ONLY the following modules (Chapter 2 content):\n1. lit_review (Module 9): Inverted triangle structure -- broad context 10%, domain literature 35%, closely related studies 35%, gap identification 20%. Must present BOTH supporting AND opposing perspectives on the topic. Must explicitly identify the gap the current study addresses. Flag one-sided presentation, missing gap, or structural problems.\n2. theoretical_framework (Module 3): Qualitative study = theoretical framework. Quantitative study = conceptual framework. Must be explicitly named. Must be applied and referenced in ALL chapters, not just Chapter 2. Flag wrong framework type for the methodology, unnamed framework, or framework that disappears after Chapter 2.\n3. lit_currency (Module 21): General literature within 10 years of expected approval. Technology-related literature within 5 years. Working standards within 3 years. 75-80% of references should be recent. Flag clearly outdated sources with their apparent publication year.\n\n',
     p5: 'Check ONLY the following modules (Chapter 3 content):\n1. methodology_justification (Module 10): Must name and explicitly reject at least 3 alternative methodologies with rationale. Must consider and reject at least 4 research designs with rationale. The selected methodology must be explicitly connected to the purpose statement and research questions. Flag insufficient alternatives, missing rationale, or missing connection to purpose.\n2. scope_limitations (Module 11): Delimitations are the researcher\'s deliberate choices about what to exclude and why. Limitations are external factors outside the researcher\'s control that may affect the study. These are commonly confused or merged. Flag if confused, incorrectly combined, or absent.\n\n',
-    p6: 'Check ONLY the following modules (Chapter 5 content):\n1. ch5_integrity (Module 15): No new literature or new arguments may appear in Chapter 5. Findings must be explicitly connected to the Chapter 2 literature, the theoretical or conceptual framework, and each research question individually. Must include at least 3 future research suggestions that are substantively different from each other in terms of population, methodology, or variable. The purpose statement must be restated verbatim and declared fulfilled or not fulfilled with evidence.\n2. citation_authority expert mode (Module 4): In Chapters 4-5 the student IS the expert conducting original research. Flag over-citation of the student\'s own original findings — their own data and results do not need external citations.\n\n',
+    p6: 'Check ONLY the following modules (Chapter 5 content):\n1. ch5_integrity (Module 15): No new literature or new arguments may appear in Chapter 5. Findings must be explicitly connected to the Chapter 2 literature, the theoretical or conceptual framework, and each research question individually. Must include at least 3 future research suggestions that are substantively different from each other in terms of population, methodology, or variable. The purpose statement must be restated verbatim and declared fulfilled or not fulfilled with evidence.\n2. citation_authority expert mode (Module 4): In Chapters 4-5 the student IS the expert conducting original research. Flag over-citation of the student\'s own original findings -- their own data and results do not need external citations.\n\n',
     p7: 'Check ONLY the following modules (References section):\n1. apa_references (Module 25): APA 7th edition format. Flag violations in: author last name comma initials; publication year in parentheses; article title in sentence case not title case; journal name italicized; volume number italicized; issue number in parentheses not italicized; page range; DOI formatted as https://doi.org/xxxxx. Identify specific references with specific violations.\n2. citation_crossmatch (Module 26): Identify patterns suggesting in-text citations that do not appear in the reference list, or reference list entries that are not cited in the text.\n\n',
     p8: 'Full document pass. Check ONLY the following modules across the entire document:\n1. verbatim_consistency (Module 6): The purpose statement and the specific problem statement must appear word-for-word identical every time they appear anywhere in the document. Flag any instance where either statement has been paraphrased, shortened, reworded, or altered in any way. Show the discrepancy.\n2. rq_development (Module 2): Each research question must be focused on one issue, feasible to answer within the study timeframe, and directly traceable to the stated purpose. No yes-or-no questions. Qualitative RQs ask about experiences, perceptions, and meaning. Quantitative RQs ask about relationships, correlations, and effects. Flag questions that are too broad, unanswerable, misaligned with methodology, or phrased as yes-no questions.\n3. abstract (Module 16): Must contain all 5 required elements: (1) statement of the problem, (2) statement of purpose, (3) methodology and research design, (4) findings or anticipated findings, (5) keywords. Keywords must be italicized. Flag any missing element.\n\n'
   };
@@ -741,7 +741,7 @@ function runAllPasses() {
 
   function next(i) {
     if (i >= rel.length) {
-      document.getElementById('current-pass-label').textContent = 'All passes complete — generating report...';
+      document.getElementById('current-pass-label').textContent = 'All passes complete -- generating report...';
       updateProgress(total, total);
       setTimeout(function(){
         buildReport();
@@ -885,7 +885,7 @@ function buildReport() {
         '<div class="finding-flag ' + sevClass + '">' + (FLAG_EMOJI[f.severity]||'\uD83D\uDD35') + '</div>' +
         '<div class="finding-issue">' +
           '<div class="finding-module">' + esc(f.moduleName||f.module||'') + (f.section?' &middot; '+esc(f.section):'') + '</div>' +
-          '<div class="finding-passage ' + sevClass + '">' + (f.passage ? '&ldquo;' + esc(f.passage) + '&rdquo;' : '<em style="color:#aaa">[No specific passage extracted — applies to full document or section]</em>') + '</div>' +
+          '<div class="finding-passage ' + sevClass + '">' + (f.passage ? '&ldquo;' + esc(f.passage) + '&rdquo;' : '<em style="color:#aaa">[No specific passage extracted -- applies to full document or section]</em>') + '</div>' +
           (f.issue ? '<div><span class="finding-analysis-label">Analysis:</span><div class="finding-analysis-text">' + esc(f.issue) + '</div></div>' : '') +
         '</div>' +
         '<div class="finding-note">' +
@@ -904,11 +904,11 @@ function esc(s) {
 
 function downloadReport() {
   var lines = [
-    'READY TO DEFEND — DISSERTATION REVIEW REPORT',
+    'READY TO DEFEND -- DISSERTATION REVIEW REPORT',
     'Jennifer Touati, EdD | Education Under Construction LLC',
     'readytodefend.org',
     'Your Voice | Your Understanding | Your Defense',
-    '', '─'.repeat(60),
+    '', '-'.repeat(60),
     'Student: ' + account.legalName,
     'Email: ' + account.email,
     'Degree: ' + submissionMeta.degree + ' | Methodology: ' + submissionMeta.methodology,
@@ -918,13 +918,13 @@ function downloadReport() {
     '',
     'DISCLAIMER: This report was prepared using the Defense Ready proprietary review system.',
     'All coaching observations reflect the methodology of Dr. Jennifer Touati, EdD.',
-    'Confidential — prepared for the named recipient only.',
-    '', 'EXECUTIVE SUMMARY', '─'.repeat(40)
+    'Confidential -- prepared for the named recipient only.',
+    '', 'EXECUTIVE SUMMARY', '-'.repeat(40)
   ];
   var counts = {critical:0,major:0,moderate:0,minor:0,coaching:0};
   allFindings.forEach(function(f){if(counts[f.severity]!==undefined)counts[f.severity]++;});
   SEV_ORDER.forEach(function(s){lines.push(FLAG_EMOJI[s]+'  '+s.toUpperCase()+': '+counts[s]);});
-  lines.push('TOTAL FLAGS: '+allFindings.length, '', 'FINDINGS', '═'.repeat(60));
+  lines.push('TOTAL FLAGS: '+allFindings.length, '', 'FINDINGS', '='.repeat(60));
 
   var byChapter = {};
   allFindings.forEach(function(f){
@@ -933,7 +933,7 @@ function downloadReport() {
     byChapter[ch].push(f);
   });
   Object.keys(byChapter).forEach(function(ch){
-    lines.push('', '── '+ch.toUpperCase()+' ──');
+    lines.push('', '-- '+ch.toUpperCase()+' --');
     byChapter[ch].sort(function(a,b){return SEV_ORDER.indexOf(a.severity)-SEV_ORDER.indexOf(b.severity);})
     .forEach(function(f){
       lines.push('');
@@ -942,10 +942,10 @@ function downloadReport() {
       if(f.passage)lines.push('Passage: "'+f.passage+'"');
       lines.push('Issue: '+(f.issue||''));
       lines.push("Dr. Touati\'s Note: "+(f.coaching||''));
-      lines.push('·'.repeat(50));
+      lines.push('.'.repeat(50));
     });
   });
-  lines.push('','═'.repeat(60),'Proprietary & Confidential — Defense Ready | defensereadybootcamp.com');
+  lines.push('','='.repeat(60),'Proprietary & Confidential -- Defense Ready | defensereadybootcamp.com');
 
   var blob = new Blob([lines.join('\n')], {type:'text/plain'});
   var url = URL.createObjectURL(blob);
@@ -955,7 +955,7 @@ function downloadReport() {
   URL.revokeObjectURL(url);
 }
 
-// ── POST SUBMISSION TO SUPABASE + SEND NOTIFICATION ──────────────
+// -- POST SUBMISSION TO SUPABASE + SEND NOTIFICATION --------------
 async function postSubmissionToSupabase() {
   if (!sbClient || !account.userId) {
     console.log('No Supabase session - skipping submission post');
