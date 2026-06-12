@@ -780,6 +780,47 @@ function callAPI(prompt, passId) {
   });
 }
 
+function runAllPasses() {
+  var rel = getRelevantPasses();
+  var total = rel.length, done = 0;
+
+  function next(i) {
+    if (i >= rel.length) {
+      document.getElementById('current-pass-label').textContent = 'All passes complete -- generating report...';
+      updateProgress(total, total);
+      dbg('=== ALL PASSES DONE -- total allFindings: ' + allFindings.length + ' ===');
+      console.log('allFindings count before post:', allFindings.length);
+      setTimeout(function(){
+        buildReport();
+        postSubmissionToSupabase().then(function(held) {
+          if (held) {
+            showScreen('held');
+          } else {
+            showScreen('report');
+          }
+        }).catch(function() {
+          showScreen('report');
+        });
+      }, 600);
+      return;
+    }
+    var pid = rel[i];
+    setPassState(pid, 'running');
+    document.getElementById('current-pass-label').textContent =
+      PASSES.find(function(p){return p.id===pid;}).name + '...';
+    updateProgress(done, total);
+
+    callAPI(buildPrompt(pid, docText, submissionMeta), pid).then(function(findings) {
+      allFindings = allFindings.concat(findings);
+      setPassState(pid, 'done');
+      done++;
+      updateProgress(done, total);
+      setTimeout(function(){ next(i+1); }, 300);
+    });
+  }
+  next(0);
+}
+
 function buildReport() {
   var dt = new Date();
   var subTypeLabel = submissionMeta.subType==='proposal' ? 'Proposal' : 'Complete Dissertation';
