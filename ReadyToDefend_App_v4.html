@@ -387,16 +387,26 @@ window.addEventListener('load', function() {
   }
 
   // Supabase session is shared via localStorage on same domain
-  // Just check existing session directly - no token passing needed
+  // Use onAuthStateChange as the authoritative signal — it fires once
+  // the SDK has finished hydrating from localStorage, avoiding the
+  // race condition where getSession() returns null on first load.
   function initApp() {
     if (!sbClient) {
       // No Supabase - show submit form anyway for testing
       showScreen('submit');
       return;
     }
-    sbClient.auth.getSession().then(function(r) {
-      if (r.data && r.data.session) {
-        var u = r.data.session.user;
+
+    var settled = false;
+
+    // onAuthStateChange fires reliably after SDK hydration completes
+    var sub = sbClient.auth.onAuthStateChange(function(event, session) {
+      if (settled) return;
+      settled = true;
+      sub.data.subscription.unsubscribe();
+
+      if (session && session.user) {
+        var u = session.user;
         account.email = u.email;
         account.legalName = u.user_metadata && u.user_metadata.legal_name
           ? u.user_metadata.legal_name : u.email;
@@ -408,14 +418,35 @@ window.addEventListener('load', function() {
         console.log('No session - redirecting to login');
         window.location.href = 'index.html';
       }
-    }).catch(function() {
-      showScreen('submit');
     });
+
+    // Safety fallback: if onAuthStateChange hasn't fired in 3s,
+    // try getSession directly (handles edge cases / slow networks)
+    setTimeout(function() {
+      if (settled) return;
+      settled = true;
+      sub.data.subscription.unsubscribe();
+      sbClient.auth.getSession().then(function(r) {
+        if (r.data && r.data.session) {
+          var u = r.data.session.user;
+          account.email = u.email;
+          account.legalName = u.user_metadata && u.user_metadata.legal_name
+            ? u.user_metadata.legal_name : u.email;
+          account.userId = u.id;
+          console.log('Session found (fallback):', account.email);
+          showScreen('submit');
+        } else {
+          console.log('No session (fallback) - redirecting to login');
+          window.location.href = 'index.html';
+        }
+      }).catch(function() {
+        showScreen('submit');
+      });
+    }, 3000);
   }
 
-  // Small delay to ensure Supabase SDK is ready
-  setTimeout(initApp, 200);
-});;
+  initApp();
+});
 var fileReady = false;
 
 var PASSES = [
