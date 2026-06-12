@@ -181,7 +181,10 @@ input:disabled{background:#f4f5f7;color:#888}
       </div>
     </div>
     <div class="field-group">
-      <div class="field-label">Chapters Included in This Submission <span style="color:#c0392b">*</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="field-label" style="margin-bottom:0">Chapters Included in This Submission <span style="color:#c0392b">*</span></div>
+        <button type="button" onclick="selectAllChapters()" style="background:#003DA5;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif">Include Everything</button>
+      </div>
       <div class="check-group">
         <label class="check-item"><input type="checkbox" class="ch-box" value="1"> Chapter 1</label>
         <label class="check-item"><input type="checkbox" class="ch-box" value="2"> Chapter 2</label>
@@ -472,6 +475,11 @@ function showScreen(n) {
   window.scrollTo(0,0);
 }
 
+function selectAllChapters() {
+  document.querySelectorAll('.ch-box').forEach(function(cb) { cb.checked = true; });
+  document.getElementById('refs-included').checked = true;
+}
+
 function dbg(msg) {
   var el = document.getElementById('debug-box');
   if (!el) return;
@@ -705,8 +713,16 @@ function buildPrompt(passId, text, meta) {
 
 function callAPI(prompt, passId) {
   dbg('[' + passId + '] Starting API call...');
+  var controller = new AbortController();
+  var timeoutId = setTimeout(function() {
+    controller.abort();
+    dbg('[' + passId + '] TIMEOUT -- API call aborted after 30s. Possible CORS block from hosting provider.');
+    var lbl = document.getElementById('current-pass-label');
+    if (lbl) { lbl.style.color = 'red'; lbl.textContent = 'API call timed out [' + passId + '] -- check console for CORS errors'; }
+  }, 30000);
   return fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': API_KEY,
@@ -720,6 +736,7 @@ function callAPI(prompt, passId) {
       messages: [{role:'user', content: prompt}]
     })
   })
+  .then(function(resp) { clearTimeout(timeoutId); return resp; })
   .then(function(resp) {
     dbg('[' + passId + '] HTTP status: ' + resp.status);
     if (!resp.ok) {
