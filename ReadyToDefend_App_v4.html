@@ -386,63 +386,66 @@ window.addEventListener('load', function() {
     sbClient = window.supabase.createClient(SB_URL, SB_ANON);
   }
 
-  // Supabase session is shared via localStorage on same domain
-  // Use onAuthStateChange as the authoritative signal — it fires once
-  // the SDK has finished hydrating from localStorage, avoiding the
-  // race condition where getSession() returns null on first load.
   function initApp() {
     if (!sbClient) {
-      // No Supabase - show submit form anyway for testing
       showScreen('submit');
       return;
     }
 
-    var settled = false;
+    // Path 1: payment redirect passes ?token=...&refresh=... in URL
+    // Read them, call setSession(), then clean the URL
+    var params = new URLSearchParams(window.location.search);
+    var urlToken   = params.get('token');
+    var urlRefresh = params.get('refresh');
 
-    // onAuthStateChange fires reliably after SDK hydration completes
-    var sub = sbClient.auth.onAuthStateChange(function(event, session) {
-      if (settled) return;
-      settled = true;
-      sub.data.subscription.unsubscribe();
-
+    function resolveSession(session) {
       if (session && session.user) {
         var u = session.user;
-        account.email = u.email;
-        account.legalName = u.user_metadata && u.user_metadata.legal_name
-          ? u.user_metadata.legal_name : u.email;
-        account.userId = u.id;
-        console.log('Session found:', account.email);
+        account.email      = u.email;
+        account.legalName  = (u.user_metadata && u.user_metadata.legal_name)
+                               ? u.user_metadata.legal_name : u.email;
+        account.userId     = u.id;
+        console.log('Session ready:', account.email);
         showScreen('submit');
       } else {
-        // No session - redirect back to site to log in
-        console.log('No session - redirecting to login');
+        console.log('No session — redirecting to login');
         window.location.href = 'index.html';
       }
-    });
+    }
 
-    // Safety fallback: if onAuthStateChange hasn't fired in 3s,
-    // try getSession directly (handles edge cases / slow networks)
-    setTimeout(function() {
-      if (settled) return;
-      settled = true;
-      sub.data.subscription.unsubscribe();
-      sbClient.auth.getSession().then(function(r) {
-        if (r.data && r.data.session) {
-          var u = r.data.session.user;
-          account.email = u.email;
-          account.legalName = u.user_metadata && u.user_metadata.legal_name
-            ? u.user_metadata.legal_name : u.email;
-          account.userId = u.id;
-          console.log('Session found (fallback):', account.email);
-          showScreen('submit');
-        } else {
-          console.log('No session (fallback) - redirecting to login');
-          window.location.href = 'index.html';
-        }
+    if (urlToken && urlRefresh) {
+      // Token path (post-payment redirect) — set session explicitly
+      console.log('Token found in URL — calling setSession');
+      // Clean URL so tokens don't linger in browser history
+      window.history.replaceState({}, document.title, window.location.pathname);
+      sbClient.auth.setSession({
+        access_token:  decodeURIComponent(urlToken),
+        refresh_token: decodeURIComponent(urlRefresh)
+      }).then(function(r) {
+        resolveSession(r.data && r.data.session ? r.data.session : null);
       }).catch(function() {
-        showScreen('submit');
+        resolveSession(null);
       });
-    }, 3000);
+    } else {
+      // Path 2: normal login redirect — session is already in localStorage
+      // onAuthStateChange fires after SDK hydrates from storage
+      var settled = false;
+      var sub = sbClient.auth.onAuthStateChange(function(event, session) {
+        if (settled) return;
+        settled = true;
+        sub.data.subscription.unsubscribe();
+        resolveSession(session);
+      });
+      // 3-second fallback in case onAuthStateChange doesn't fire
+      setTimeout(function() {
+        if (settled) return;
+        settled = true;
+        sub.data.subscription.unsubscribe();
+        sbClient.auth.getSession().then(function(r) {
+          resolveSession(r.data && r.data.session ? r.data.session : null);
+        }).catch(function() { resolveSession(null); });
+      }, 3000);
+    }
   }
 
   initApp();
