@@ -452,7 +452,7 @@ function loadQ(status) {
       var chs = Array.isArray(row.chapters_submitted) ? row.chapters_submitted.join(', ') : (row.chapters_submitted || '--');
       // Release button: grey/disabled once released, green when held
       var releaseBtn = row.report_status === 'held'
-        ? '<button class="btn btn-success btn-sm" onclick="qRelease(''+sid+'')">Release &#x2713;</button>'
+        ? '<button class="btn btn-success btn-sm" onclick="qRelease(\'' + sid + '\')">Release &#x2713;</button>'
         : '<button class="btn btn-sm" style="background:#e2e4e9;color:#aaa;cursor:default" disabled>Released</button>';
       return '<div class="qr '+sc+'">' +
         '<div><div class="sname">'+nm+'</div><div class="semail">'+em+'</div><div class="smeta">'+deg+'     |     '+meth+'     |     Sub #'+(row.submission_number||1)+'</div></div>'+
