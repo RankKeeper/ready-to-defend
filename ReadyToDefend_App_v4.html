@@ -716,10 +716,10 @@ function callAPI(prompt, passId) {
   var controller = new AbortController();
   var timeoutId = setTimeout(function() {
     controller.abort();
-    dbg('[' + passId + '] TIMEOUT -- Edge Function did not respond in 60s.');
+    dbg('[' + passId + '] TIMEOUT -- Edge Function did not respond in 90s.');
     var lbl = document.getElementById('current-pass-label');
     if (lbl) { lbl.style.color = 'red'; lbl.textContent = 'Request timed out [' + passId + '] -- please try again'; }
-  }, 60000);
+  }, 90000);
 
   return sbClient.functions.invoke('run-review', {
     body: { prompt: prompt, passId: passId }
