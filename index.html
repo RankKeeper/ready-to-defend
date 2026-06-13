@@ -1,789 +1,93 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ready To Defend | Dissertation Review | Jennifer Touati, EdD</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://js.stripe.com/v3/"></script>
-<style>
+// Supabase Edge Function: run-review
+// Proxies Anthropic API calls for the Ready To Defend review engine
+// Keeps the API key secure in Supabase secrets, never exposed in browser
 
+const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
+const MODEL = 'claude-sonnet-4-5'
 
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --navy:#003DA5;--navy-dark:#002d82;--navy-light:#185FA5;
-  --gold:#D4AF37;--gold-dark:#c09e2a;
-  --text:#1a1a2e;--text-secondary:#555;--text-light:#888;
-  --border:#e2e4e9;--bg:#f4f5f7;--white:#fff;
-  --radius:12px;--shadow:0 4px 24px rgba(0,0,0,0.08)
-}
-body{font-family:'Georgia',serif;background:var(--white);color:var(--text);min-height:100vh}
-.screen{display:none}.screen.active{display:block}
-
-/* NAV */
-nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
-.nav-logo{height:56px;width:auto;padding:8px 0}
-.nav-links{display:flex;align-items:center;gap:8px}
-.nav-btn{padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;font-family:Arial,sans-serif;font-weight:500;transition:all 0.15s;border:none}
-.nav-btn-ghost{background:transparent;color:var(--navy);border:1px solid var(--border)}
-.nav-btn-ghost:hover{background:var(--bg)}
-.nav-btn-gold{background:var(--gold);color:var(--navy);font-weight:600}
-.nav-btn-gold:hover{background:var(--gold-dark)}
-
-/* HERO - WHITE */
-.hero{background:var(--white);padding:1.75rem 2rem 1.5rem;text-align:center;border-bottom:1px solid var(--border)}
-.hero-banner{max-width:520px;width:88%;height:auto;margin:0 auto 1.25rem;display:block}
-.hero-sub{font-size:20px;color:var(--text);max-width:620px;margin:0 auto 0.75rem;line-height:1.7;font-family:Arial,sans-serif;font-weight:400}
-.hero-tagline{font-size:13px;color:var(--gold);letter-spacing:0.1em;font-family:Arial,sans-serif;margin-bottom:1.5rem;text-transform:uppercase;font-weight:600}
-.hero-cta-group{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.btn{padding:12px 28px;border-radius:10px;font-size:15px;cursor:pointer;font-family:Arial,sans-serif;font-weight:600;transition:all 0.15s;border:none;display:inline-flex;align-items:center;gap:8px}
-.btn-gold{background:var(--gold);color:var(--navy)}
-.btn-gold:hover{background:var(--gold-dark);transform:translateY(-1px);box-shadow:0 6px 20px rgba(212,175,55,0.3)}
-.btn-outline-navy{background:transparent;color:var(--navy);border:2px solid var(--navy)}
-.btn-outline-navy:hover{background:rgba(0,61,165,0.05)}
-.btn-primary{background:var(--navy);color:#fff;width:100%}
-.btn-primary:hover{background:var(--navy-dark)}
-.btn-secondary{background:transparent;color:var(--navy);border:1.5px solid var(--navy);width:100%}
-.btn-secondary:hover{background:rgba(0,61,165,0.05)}
-.btn-sm{padding:9px 20px;font-size:14px}
-
-/* SECTIONS */
-.section{padding:4rem 2rem;max-width:1000px;margin:0 auto}
-.section-bg{background:var(--bg);padding:4rem 2rem}
-.section-inner{max-width:1000px;margin:0 auto}
-.section-title{font-size:26px;font-weight:400;color:var(--navy);margin-bottom:8px;text-align:center}
-.section-sub{font-size:14px;font-family:Arial,sans-serif;color:var(--text-light);text-align:center;margin-bottom:2.5rem}
-.props-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
-.prop-card{background:var(--white);border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);padding:1.75rem;border-top:4px solid var(--gold);box-shadow:0 4px 20px rgba(0,0,0,0.15)}
-.prop-icon{font-size:28px;margin-bottom:12px}
-.prop-title{font-size:16px;font-weight:500;color:var(--navy);margin-bottom:8px;font-family:Arial,sans-serif}
-.prop-text{font-size:13px;font-family:Arial,sans-serif;color:var(--text-secondary);line-height:1.7}
-.prop-tag{display:inline-block;background:rgba(0,61,165,0.08);color:var(--navy);font-size:10px;font-family:Arial,sans-serif;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px}
-
-/* HOW IT WORKS */
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:2rem;position:relative}
-.steps::before{content:'';position:absolute;top:28px;left:calc(12.5% + 28px);right:calc(12.5% + 28px);height:2px;background:linear-gradient(90deg,var(--gold),var(--navy));z-index:0}
-.step-item{text-align:center;position:relative;z-index:1}
-.step-num{width:56px;height:56px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;margin:0 auto 12px;border:3px solid var(--gold)}
-.step-title{font-size:14px;font-weight:500;color:var(--navy);margin-bottom:6px;font-family:Arial,sans-serif}
-.step-text{font-size:12px;font-family:Arial,sans-serif;color:var(--text-light);line-height:1.6}
-
-/* FLAG KEY */
-.flag-preview-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:1.5rem}
-.flag-preview{border-radius:10px;padding:1rem 12px;text-align:center;border:1px solid var(--border)}
-.flag-emoji{font-size:22px;margin-bottom:6px}
-.flag-name{font-size:12px;font-weight:600;font-family:Arial,sans-serif;margin-bottom:4px}
-.flag-desc{font-size:11px;font-family:Arial,sans-serif;color:var(--text-light);line-height:1.4}
-.flag-critical{background:#fff5f5;border-color:#f5c1c1}.flag-critical .flag-name{color:#c0392b}
-.flag-major{background:#fff8f0;border-color:#f5d5b0}.flag-major .flag-name{color:#e67e22}
-.flag-moderate{background:#fffdf0;border-color:#f0e0a0}.flag-moderate .flag-name{color:#b8860b}
-.flag-minor{background:#f0fff4;border-color:#a8e6bf}.flag-minor .flag-name{color:#27ae60}
-.flag-coaching{background:#f0f4ff;border-color:#b0c4f5}.flag-coaching .flag-name{color:#003DA5}
-
-/* PRICING */
-.pricing-bg{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-light) 100%);padding:4rem 2rem}
-.pricing-inner{max-width:800px;margin:0 auto;text-align:center}
-.pricing-title{font-size:26px;color:#fff;margin-bottom:8px}
-.pricing-sub{font-size:14px;color:rgba(255,255,255,0.7);font-family:Arial,sans-serif;margin-bottom:3rem}
-.pricing-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;max-width:680px;margin:0 auto}
-.pricing-card{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:var(--radius);padding:2rem 1.5rem;color:#fff;transition:all 0.2s;position:relative}
-.pricing-card:hover{background:rgba(255,255,255,0.12);transform:translateY(-2px)}
-.pricing-card.featured{background:rgba(212,175,55,0.15);border-color:var(--gold);border-width:2px}
-.featured-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--navy);font-size:11px;font-weight:700;font-family:Arial,sans-serif;padding:4px 14px;border-radius:20px;white-space:nowrap}
-.pricing-name{font-size:17px;font-weight:500;margin-bottom:8px;font-family:Arial,sans-serif}
-.pricing-price{font-size:42px;font-weight:300;color:var(--gold);margin-bottom:4px;font-family:Arial,sans-serif}
-.pricing-price span{font-size:18px;vertical-align:super}
-.pricing-period{font-size:12px;color:rgba(255,255,255,0.55);font-family:Arial,sans-serif;margin-bottom:1.25rem}
-.pricing-features{list-style:none;text-align:left;font-size:12.5px;font-family:Arial,sans-serif;color:rgba(255,255,255,0.85);line-height:2.1}
-.pricing-features li::before{content:"✓  ";color:var(--gold);font-weight:700}
-.pricing-cta{margin-top:1.5rem;padding:11px 20px;border-radius:8px;font-size:14px;cursor:pointer;font-family:Arial,sans-serif;font-weight:600;border:none;width:100%;transition:all 0.15s}
-.pricing-cta-gold{background:var(--gold);color:var(--navy)}
-.pricing-cta-gold:hover{background:var(--gold-dark)}
-.pricing-cta-outline{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,0.4)}
-.pricing-cta-outline:hover{background:rgba(255,255,255,0.1)}
-.pricing-note{font-size:11px;color:rgba(255,255,255,0.45);font-family:Arial,sans-serif;margin-top:1.5rem;font-style:italic}
-
-/* ABOUT */
-.about-section{padding:4rem 2rem;background:var(--white)}
-.about-inner{max-width:900px;margin:0 auto;display:grid;grid-template-columns:280px 1fr;gap:3.5rem;align-items:center}
-.about-photo{width:260px;height:310px;border-radius:16px;object-fit:cover;object-position:center top;box-shadow:0 8px 32px rgba(0,0,0,0.12);border:3px solid var(--gold)}
-.about-title{font-size:24px;font-weight:400;color:var(--navy);margin-bottom:4px}
-.about-cred{font-size:13px;font-family:Arial,sans-serif;color:var(--gold);margin-bottom:1.25rem;font-weight:600;letter-spacing:0.02em}
-.about-text{font-size:14px;font-family:Arial,sans-serif;color:var(--text-secondary);line-height:1.85}
-
-/* FORMS */
-.form-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--bg)}
-.form-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:2.5rem;width:100%;max-width:480px;box-shadow:var(--shadow)}
-.form-logo{text-align:center;margin-bottom:2rem}
-.form-logo img{height:140px;width:auto}
-.form-title{font-size:22px;font-weight:400;color:var(--navy);margin-bottom:6px}
-.form-sub{font-size:13px;font-family:Arial,sans-serif;color:var(--text-light);margin-bottom:1.75rem;line-height:1.5}
-.field-group{margin-bottom:14px}
-.field-label{font-size:12px;font-family:Arial,sans-serif;font-weight:500;color:var(--text-secondary);margin-bottom:4px;display:block}
-.field-req{color:#c0392b}
-input[type=text],input[type=email],input[type=password],select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:Arial,sans-serif;color:var(--text);background:var(--white);transition:border 0.15s}
-input:focus,select:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(0,61,165,0.1)}
-.check-item{display:flex;align-items:flex-start;gap:8px;font-size:12px;font-family:Arial,sans-serif;color:var(--text-secondary);cursor:pointer;line-height:1.5;margin-bottom:10px}
-.check-item input[type=checkbox]{width:15px;height:15px;flex-shrink:0;margin-top:1px;accent-color:var(--navy);cursor:pointer}
-.check-item a{color:var(--navy);text-decoration:underline;cursor:pointer}
-.error-box{background:#fff5f5;border:1px solid #f5c1c1;border-radius:8px;padding:10px 14px;font-size:13px;font-family:Arial,sans-serif;color:#c0392b;margin-bottom:14px;line-height:1.5;display:none}
-.divider{display:flex;align-items:center;gap:12px;margin:1.25rem 0;font-size:12px;font-family:Arial,sans-serif;color:var(--text-light)}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
-.form-switch{text-align:center;font-size:13px;font-family:Arial,sans-serif;color:var(--text-light);margin-top:1.25rem}
-.form-switch a{color:var(--navy);cursor:pointer;text-decoration:underline}
-.terms-box{background:#f8f9fb;border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:11.5px;font-family:Arial,sans-serif;color:var(--text-secondary);line-height:1.7;font-style:italic;margin-bottom:14px;max-height:120px;overflow-y:auto}
-.locked-note{background:rgba(0,61,165,0.06);border:1px solid rgba(0,61,165,0.2);border-radius:8px;padding:10px 14px;font-size:12px;font-family:Arial,sans-serif;color:#444;margin-top:6px;line-height:1.5}
-
-/* PAYMENT */
-.order-summary{background:#f8f9fb;border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1.5rem}
-.order-row{display:flex;justify-content:space-between;align-items:center;font-family:Arial,sans-serif;font-size:13px;padding:4px 0}
-.order-row.total{border-top:1px solid var(--border);margin-top:8px;padding-top:10px;font-weight:600;font-size:15px}
-.stripe-field{background:#f8f9fb;border:1px solid var(--border);border-radius:8px;padding:12px;font-family:Arial,sans-serif;font-size:14px;color:var(--text-light);margin-bottom:14px}
-.secure-note{display:flex;align-items:center;gap:6px;font-size:11px;font-family:Arial,sans-serif;color:var(--text-light);justify-content:center;margin-top:10px}
-
-/* SUCCESS */
-.success-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;background:var(--bg)}
-.success-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:3rem 2.5rem;width:100%;max-width:480px;text-align:center;box-shadow:var(--shadow)}
-.success-icon{font-size:56px;margin-bottom:1rem}
-.success-title{font-size:24px;color:var(--navy);margin-bottom:8px}
-.success-text{font-size:14px;font-family:Arial,sans-serif;color:var(--text-secondary);line-height:1.7;margin-bottom:2rem}
-
-/* TERMS MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:none;align-items:center;justify-content:center;padding:1rem}
-.modal-overlay.open{display:flex}
-.modal-box{background:#fff;border-radius:var(--radius);padding:2rem;max-width:680px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow)}
-.modal-title{font-size:20px;color:var(--navy);margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
-.modal-close{cursor:pointer;font-size:24px;color:var(--text-light);background:none;border:none;line-height:1}
-.modal-body{font-size:13px;font-family:Arial,sans-serif;color:var(--text-secondary);line-height:1.8}
-.modal-body h3{color:var(--navy);font-size:14px;margin:1.25rem 0 6px;font-family:Arial,sans-serif}
-.modal-body p{margin-bottom:10px}
-.modal-body ul{padding-left:1.25rem;margin-bottom:10px}
-.modal-body ul li{margin-bottom:4px}
-
-/* FOOTER */
-footer{background:var(--navy);color:rgba(255,255,255,0.7);padding:2.5rem 2rem;font-family:Arial,sans-serif;font-size:12px;line-height:1.8}
-.footer-inner{max-width:900px;margin:0 auto;text-align:center}
-footer a{color:var(--gold);text-decoration:none}
-footer a:hover{text-decoration:underline}
-.footer-logo{height:44px;width:auto;margin-bottom:1rem;opacity:0.9}
-.footer-tou-body{display:none;font-size:11px;color:rgba(255,255,255,0.55);line-height:1.85;text-align:left;margin-top:14px;columns:2;column-gap:2rem}
-.footer-tou-body p{margin-bottom:8px;break-inside:avoid}
-
-@keyframes spin{to{transform:rotate(360deg)}}
-@media(max-width:700px){
-  .props-grid{grid-template-columns:1fr}
-  .steps{grid-template-columns:1fr 1fr}.steps::before{display:none}
-  .pricing-grid{grid-template-columns:1fr}
-  .about-inner{grid-template-columns:1fr;text-align:center}
-  .about-photo{margin:0 auto}
-  .flag-preview-grid{grid-template-columns:repeat(3,1fr)}
-}
-
-
-</style>
-</head>
-<body>
-
-<div id="screen-landing" class="screen active">
-
-<nav>
-  <img src="ready_to_defend_logo.png" alt="Ready To Defend" class="nav-logo">
-  <div class="nav-links">
-    <button class="nav-btn nav-btn-ghost" onclick="showScreen('login')">Log In</button>
-    <button class="nav-btn nav-btn-gold" onclick="showScreen('signup')">Get Started</button>
-  </div>
-</nav>
-
-<!-- HERO - WHITE -->
-<div class="hero">
-  <img src="ready_to_defend_banner.png" alt="Ready To Defend" class="hero-banner">
-  <p class="hero-sub">The only dissertation review built for the post-AI world.</p>
-  <p class="hero-sub" style="margin-top:0.5rem">Know your research. Defend your voice.</p>
-  <div class="hero-cta-group" style="margin-top:1.5rem">
-    <button class="btn btn-gold" onclick="showScreen('signup')">Start My Review &rarr;</button>
-    <button class="btn btn-outline-navy" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">See How It Works</button>
-  </div>
-</div>
-
-<!-- VALUE PROPS -->
-<div style="background:var(--navy);padding:3.5rem 2rem">
-<div style="max-width:1000px;margin:0 auto">
-  <div class="section-title" style="color:#fff">Built on 26 Review Modules</div>
-  <div class="section-sub" style="color:rgba(255,255,255,0.65)">Every report applies Jennifer Touati's proprietary dissertation methodology — the same framework used in 1-on-1 coaching.</div>
-  <div class="props-grid">
-    <div class="prop-card">
-      <div class="prop-icon">🛡️</div>
-      <div class="prop-title">Research Alignment</div>
-      <div class="prop-text">Your problem, purpose, methodology, and research questions must form a diamond. One broken link and your committee stops the defense. We find it first.</div>
-    </div>
-    <div class="prop-card">
-      <div class="prop-icon">📖</div>
-      <div class="prop-title">Literature Review</div>
-      <div class="prop-tag">Gold Standard</div>
-      <div class="prop-text">Your literature review is the foundation of your scholarly argument. We check structure, currency, balance, and whether your gap is clearly identified and defensible.</div>
-    </div>
-    <div class="prop-card">
-      <div class="prop-icon">🎯</div>
-      <div class="prop-title">Voice &amp; Ownership</div>
-      <div class="prop-text">AI writing patterns, anthropomorphic statements, first person usage, and verbatim consistency — every flag is something your committee will catch.</div>
-    </div>
-    <div class="prop-card">
-      <div class="prop-icon">⚖️</div>
-      <div class="prop-title">APA 7 &amp; Citation Authority</div>
-      <div class="prop-text">In Chapters 1&ndash;3, you are not the expert yet. In Chapters 4&ndash;5, you are. Citation authority shifts by chapter — and committees know it. We check both directions.</div>
-    </div>
-    <div class="prop-card">
-      <div class="prop-icon">🔬</div>
-      <div class="prop-title">Chapter 5 Integrity</div>
-      <div class="prop-text">Key components must be present: fulfillment of purpose, implications for practice and research, reconnecting with and demonstrating you understand the results of your study.</div>
-    </div>
-    <div class="prop-card">
-      <div class="prop-icon">✍️</div>
-      <div class="prop-title">AI Detection</div>
-      <div class="prop-text">Formulaic transitions, excessive hedging, repetitive parallel structure — we flag AI writing patterns. Your committee will notice. We help you address it before they do.</div>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- HOW IT WORKS -->
-<div class="section-bg" id="how-it-works">
-  <div class="section-inner">
-    <div class="section-title">How It Works</div>
-    <div class="section-sub">From upload to report — reviewed by Jennifer Touati before delivery</div>
-    <div class="steps">
-      <div class="step-item">
-        <div class="step-num">1</div>
-        <div class="step-title">Create Account &amp; Pay</div>
-        <div class="step-text">Register with your legal name and email. Your access period begins at payment.</div>
-      </div>
-      <div class="step-item">
-        <div class="step-num">2</div>
-        <div class="step-title">Upload Your Dissertation</div>
-        <div class="step-text">Submit your .docx file. Select your degree, methodology, and chapters.</div>
-      </div>
-      <div class="step-item">
-        <div class="step-num">3</div>
-        <div class="step-title">26-Module Review Runs</div>
-        <div class="step-text">AI pre-checks run across 26 modules. Jennifer Touati reviews before delivery.</div>
-      </div>
-      <div class="step-item">
-        <div class="step-num">4</div>
-        <div class="step-title">Receive Your Report</div>
-        <div class="step-text">Color-coded findings with Jennifer's coaching notes — chapter by chapter.</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- FLAG KEY -->
-<div class="section">
-  <div class="section-title">Five Levels of Feedback</div>
-  <div class="section-sub">Every flag is color-coded by severity so you know exactly where to focus first.</div>
-  <div class="flag-preview-grid">
-    <div class="flag-preview flag-critical">
-      <div class="flag-emoji">🔴</div>
-      <div class="flag-name">Critical</div>
-      <div class="flag-desc">Must fix before defense. Your committee will send it back.</div>
-    </div>
-    <div class="flag-preview flag-major">
-      <div class="flag-emoji">🟠</div>
-      <div class="flag-name">Major</div>
-      <div class="flag-desc">Significant weakness that undermines the research.</div>
-    </div>
-    <div class="flag-preview flag-moderate">
-      <div class="flag-emoji">🟡</div>
-      <div class="flag-name">Moderate</div>
-      <div class="flag-desc">Needs attention — may not pass without correction.</div>
-    </div>
-    <div class="flag-preview flag-minor">
-      <div class="flag-emoji">🟢</div>
-      <div class="flag-name">Minor</div>
-      <div class="flag-desc">Polish item — some chairs will flag these too.</div>
-    </div>
-    <div class="flag-preview flag-coaching">
-      <div class="flag-emoji">🔵</div>
-      <div class="flag-name">Dr. Touati&rsquo;s Commentary</div>
-      <div class="flag-desc">Insight into issues and errors. Not necessarily an error — but worth your attention.</div>
-    </div>
-  </div>
-</div>
-
-<!-- PRICING -->
-<div class="pricing-bg">
-  <div class="pricing-inner">
-    <div class="pricing-title">Simple, Transparent Pricing</div>
-    <div class="pricing-sub">No subscription required. Access-period pricing that grows with your revision journey.</div>
-    <div class="pricing-grid">
-      <div class="pricing-card featured">
-        <div class="featured-badge">Most Popular</div>
-        <div class="pricing-name">Semester Access</div>
-        <div class="pricing-price"><span>$</span>497</div>
-        <div class="pricing-period">6 months &nbsp;|&nbsp; 1 submission per 7-day period</div>
-        <ul class="pricing-features">
-          <li>6 months access from purchase</li>
-          <li>Unlimited resubmissions</li>
-          <li>All chapters &amp; all 26 modules</li>
-          <li>Full interactive report every submission</li>
-          <li>Jennifer Touati reviews before delivery</li>
-        </ul>
-        <button class="pricing-cta pricing-cta-gold" onclick="selectPlan('semester','Semester Access &mdash; 6 Months','497')">Get Started</button>
-      </div>
-      <div class="pricing-card">
-        <div class="pricing-name">Full Journey</div>
-        <div class="pricing-price"><span>$</span>747</div>
-        <div class="pricing-period">12 months &nbsp;|&nbsp; 2 submissions per 7-day period</div>
-        <ul class="pricing-features">
-          <li>Everything in Semester Access, plus:</li>
-          <li>12 months access from purchase</li>
-          <li>2 submissions per 7-day period</li>
-          <li>Priority queue positioning</li>
-        </ul>
-        <button class="pricing-cta pricing-cta-outline" onclick="selectPlan('journey','Full Journey &mdash; 12 Months','747')">Get Started</button>
-      </div>
-    </div>
-    <div class="pricing-note">One submission per 7-day period gives you time to implement feedback before your next review. Full Journey doubles that cadence for students on an accelerated timeline.</div>
-  </div>
-</div>
-
-<!-- ABOUT DR TOUATI -->
-<div class="about-section">
-  <div class="about-inner">
-    <div>
-      <img src="profilepic1.png" alt="Jennifer Touati, EdD" class="about-photo">
-    </div>
-    <div>
-      <div class="about-title">Jennifer Touati, EdD</div>
-      <div class="about-cred">Founder, Ready To Defend &nbsp;|&nbsp; Education Under Construction LLC</div>
-      <div class="about-text">My pain became my passion. After my own EdD journey in Educational Leadership and Curriculum, I founded Education Under Construction in 2018 to coach doctoral candidates through the dissertation process. When AI entered the picture in 2023, I paused — and listened. What I heard from students was clear: they didn't need more help writing. They needed help understanding and defending what they'd written.<br><br>Ready To Defend was built for that student. The one who has a draft but doesn't know if they can defend every word. The one who used AI and panicked. The one who needs a committee-ready dissertation — not just a finished one.</div>
-    </div>
-  </div>
-</div>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-inner">
-    <img src="ready_to_defend_logo.png" alt="Ready To Defend" class="footer-logo">
-    <div style="margin-bottom:8px">
-      <a href="javascript:void(0)" onclick="openTerms()">Terms of Use</a> &nbsp;|&nbsp;
-      <a href="ReadyToDefend_PrivacyPolicy.html" target="_blank">Privacy Policy</a> &nbsp;|&nbsp;
-      <a href="https://defense-ready.org" target="_blank">Defense Ready</a> &nbsp;|&nbsp;
-      <a href="mailto:support@euc2.org">support@euc2.org</a>
-    </div>
-    <div>Ready To Defend is a product of Education Under Construction LLC &nbsp;|&nbsp; <a href="https://defense-ready.org" target="_blank" style="color:var(--gold)">defense-ready.org</a></div>
-    <div style="margin-top:4px;font-size:11px;font-style:italic;color:rgba(255,255,255,0.4)">Your Voice | Your Understanding | Your Defense</div>
-    <div style="margin-top:1.5rem;border-top:1px solid rgba(255,255,255,0.1);padding-top:1.25rem">
-      <button onclick="var b=document.getElementById('footer-tou');var btn=this;if(b.style.display==='none'){b.style.display='block';btn.textContent='Hide Terms of Use ▴';}else{b.style.display='none';btn.textContent='Terms of Use ▾';}"
-        style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:11px;font-family:Arial,sans-serif;cursor:pointer;text-decoration:underline;padding:0">
-        Terms of Use &#9662;
-      </button>
-      <div id="footer-tou" class="footer-tou-body">
-        <p><strong style="color:rgba(255,255,255,0.75)">1. One Dissertation Per Account.</strong> Each account is for your own single doctoral dissertation only. Credential sharing and submitting another student's work results in immediate suspension with no refund.</p>
-        <p><strong style="color:rgba(255,255,255,0.75)">2. Name Verification.</strong> Your legal name is saved at registration and cannot be changed without contacting support@euc2.org. It is checked against your dissertation title page on every submission. A title page is required.</p>
-        <p><strong style="color:rgba(255,255,255,0.75)">3. Submission Frequency.</strong> Semester Access: 1 submission per 7-day period. Full Journey: 2 submissions per 7-day period.</p>
-        <p><strong style="color:rgba(255,255,255,0.75)">4. Access Period.</strong> Semester Access (6 months) and Full Journey (12 months) are time-bounded from purchase date.</p>
-        <p><strong style="color:rgba(255,255,255,0.75)">5. No Refunds After Delivery.</strong> No refunds once a report has been delivered. Suspended accounts are not eligible for refunds.</p>
-        <p><strong style="color:rgba(255,255,255,0.75)">6. AI Disclosure.</strong> Reports are AI-assisted, not produced by a human reviewer, but may include revisions, updates, and additional commentary by Jennifer Touati, EdD or another member of staff.</p>
-        <p><strong style="color:rgba(255,255,255,0.75)">7. Confidentiality.</strong> Reports are for the sole use of the named account holder and are confidential.</p>
-        <p><strong style="color:rgba(255,255,255,0.75)">8. Governing Law.</strong> Governed by Illinois law. Disputes resolved in Lake County, Illinois courts. Full Terms: readytodefend.org/terms &nbsp;|&nbsp; &copy; 2026 Education Under Construction LLC</p>
-      </div>
-    </div>
-  </div>
-</footer>
-</div><!-- /screen-landing -->
-
-
-<!-- ══ SCREEN: SIGN UP ══ -->
-<div id="screen-signup" class="screen">
-  <div class="form-wrap">
-    <div class="form-card">
-      <div class="form-logo"><img src="ready_to_defend_logo.png" alt="Ready To Defend"></div>
-      <div class="form-title">Create Your Account</div>
-      <div class="form-sub">Your legal name is required for identity verification against your dissertation title page. It cannot be changed after registration.</div>
-      <div class="field-group">
-        <label class="field-label">Legal Name <span class="field-req">*</span></label>
-        <input type="text" id="signup-name" placeholder="Full name as on government ID">
-        <div class="locked-note">&#128274; This name will be saved permanently and matched against your dissertation title page on every submission. To update, contact support@euc2.org.</div>
-      </div>
-      <div class="field-group">
-        <label class="field-label">Email Address <span class="field-req">*</span></label>
-        <input type="email" id="signup-email" placeholder="Your email address">
-      </div>
-      <div class="field-group">
-        <label class="field-label">Password <span class="field-req">*</span></label>
-        <input type="password" id="signup-password" placeholder="Minimum 8 characters">
-      </div>
-      <div class="field-group">
-        <label class="field-label">Confirm Password <span class="field-req">*</span></label>
-        <input type="password" id="signup-confirm" placeholder="Re-enter your password">
-      </div>
-      <div class="terms-box">Ready To Defend is a proprietary AI-assisted dissertation review system operated by Education Under Construction LLC. By creating an account you confirm: (1) this account will be used solely for your own doctoral research; (2) you will not share account credentials; (3) you will not submit another student's work; (4) fraudulent use results in immediate account suspension with no refund; (5) your dissertation is processed by AI technology guided by Jennifer Touati's proprietary methodology; (6) reports are confidential and for your sole use.</div>
-      <label class="check-item">
-        <input type="checkbox" id="signup-terms">
-        <span>I have read and agree to the <a href="javascript:void(0)" onclick="openTerms()">Terms of Use</a> and acknowledge the AI-assisted nature of this service.</span>
-      </label>
-      <label class="check-item">
-        <input type="checkbox" id="signup-age">
-        <span>I confirm I am at least 18 years of age and enrolled in or have completed a doctoral program.</span>
-      </label>
-      <div id="signup-error" class="error-box"></div>
-      <button class="btn btn-primary" style="margin-top:8px" onclick="submitSignup()">Create Account &rarr;</button>
-      <div class="form-switch">Already have an account? <a href="javascript:void(0)" onclick="showScreen('login')">Log in</a></div>
-      <div class="form-switch" style="margin-top:8px"><a href="javascript:void(0)" onclick="showScreen('landing')">&larr; Back to home</a></div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══ SCREEN: LOG IN ══ -->
-<div id="screen-login" class="screen">
-  <div class="form-wrap">
-    <div class="form-card">
-      <div class="form-logo"><img src="ready_to_defend_logo.png" alt="Ready To Defend"></div>
-      <div class="form-title">Welcome Back</div>
-      <div class="form-sub">Log in to access your Ready To Defend account.</div>
-      <div class="field-group">
-        <label class="field-label">Email Address</label>
-        <input type="email" id="login-email" placeholder="Your email address">
-      </div>
-      <div class="field-group">
-        <label class="field-label">Password</label>
-        <input type="password" id="login-password" placeholder="Your password">
-      </div>
-      <div id="login-error" class="error-box"></div>
-      <button class="btn btn-primary" onclick="submitLogin()">Log In &rarr;</button>
-      <div class="form-switch" style="margin-top:12px"><a href="javascript:void(0)" onclick="alert('Password reset will be available when the full backend is connected. Please contact support@euc2.org for assistance.')">Forgot your password?</a></div>
-      <div class="divider">or</div>
-      <button class="btn btn-secondary btn-sm" style="width:100%" onclick="showScreen('signup')">Create a new account</button>
-      <div class="form-switch" style="margin-top:8px"><a href="javascript:void(0)" onclick="showScreen('landing')">&larr; Back to home</a></div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══ SCREEN: SELECT PLAN ══ -->
-<div id="screen-select-plan" class="screen">
-  <div class="form-wrap" style="background:linear-gradient(135deg,var(--navy) 0%,var(--navy-light) 100%)">
-    <div class="form-card" style="max-width:580px">
-      <div class="form-logo"><img src="ready_to_defend_logo.png" alt="Ready To Defend"></div>
-      <div class="form-title">Select Your Access Plan</div>
-      <div class="form-sub">Welcome, <strong id="plan-welcome-name"></strong>. Choose the plan that fits your timeline.</div>
-      <div style="display:grid;gap:12px">
-        <div class="order-summary" style="cursor:pointer;border:2px solid var(--gold);background:#fffdf5" onclick="selectPlan('semester','Semester Access &mdash; 6 Months','497')">
-          <div style="font-size:10px;font-weight:700;font-family:Arial,sans-serif;color:var(--gold);text-transform:uppercase;margin-bottom:4px">Most Popular</div>
-          <div class="order-row"><span style="font-weight:500;font-family:Arial,sans-serif">Semester Access</span><span style="color:var(--navy);font-weight:600;font-size:20px">$497</span></div>
-          <div style="font-size:12px;font-family:Arial,sans-serif;color:var(--text-light);margin-top:4px">6 months &nbsp;&middot;&nbsp; 1 submission per 7-day period &nbsp;&middot;&nbsp; All 26 modules</div>
-        </div>
-        <div class="order-summary" style="cursor:pointer;border:2px solid transparent" onclick="selectPlan('journey','Full Journey &mdash; 12 Months','747')">
-          <div class="order-row"><span style="font-weight:500;font-family:Arial,sans-serif">Full Journey</span><span style="color:var(--navy);font-weight:600;font-size:20px">$747</span></div>
-          <div style="font-size:12px;font-family:Arial,sans-serif;color:var(--text-light);margin-top:4px">12 months &nbsp;&middot;&nbsp; 2 submissions per 7-day period &nbsp;&middot;&nbsp; Priority queue &nbsp;&middot;&nbsp; All 26 modules</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══ SCREEN: PAYMENT ══ -->
-<div id="screen-payment" class="screen">
-  <div class="form-wrap">
-    <div class="form-card" style="text-align:center;max-width:420px">
-      <div class="form-logo"><img src="ready_to_defend_logo.png" alt="Ready To Defend"></div>
-      <div style="font-size:40px;margin-bottom:1rem">⏳</div>
-      <div class="form-title" style="text-align:center">Redirecting to Checkout</div>
-      <div class="form-sub" style="text-align:center">You are being redirected to our secure payment page. Please do not close this window.</div>
-      <div style="margin-top:1.5rem;background:#f4f5f7;border-radius:8px;padding:1rem;font-family:Arial,sans-serif;font-size:13px;color:#555">
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span id="pl-loading-name">Semester Access</span><span id="pl-loading-price">$497.00</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa"><span>Account</span><span id="pl-loading-email"></span></div>
-      </div>
-      <div style="margin-top:1.5rem">
-        <div style="width:40px;height:40px;border:3px solid #e2e4e9;border-top-color:#003DA5;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="screen-payment-loading" class="screen">
-  <div class="form-wrap">
-    <div class="form-card" style="text-align:center;max-width:420px">
-      <div class="form-logo"><img src="ready_to_defend_logo.png" alt="Ready To Defend"></div>
-      <div style="font-size:40px;margin-bottom:1rem">⏳</div>
-      <div class="form-title" style="text-align:center">Preparing Your Checkout</div>
-      <div class="form-sub" style="text-align:center">Redirecting to secure payment. This will only take a moment.</div>
-      <div style="margin-top:1.5rem">
-        <div style="width:40px;height:40px;border:3px solid #e2e4e9;border-top-color:#003DA5;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto"></div>
-      </div>
-      <div style="margin-top:1.5rem;font-size:12px;font-family:Arial,sans-serif;color:#aaa">
-        &#128274; Secure checkout powered by Stripe<br>Accepts Visa, Mastercard, Amex, Apple Pay, Klarna
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="screen-success" class="screen" style="display:none!important">
-  <div class="success-wrap">
-    <div class="success-card">
-      <div class="success-icon">&#x2705;</div>
-      <div class="success-title">Payment Confirmed</div>
-      <div class="success-text">Your account is active, <strong id="success-name"></strong>.<br><br>You're ready to submit your dissertation for review. Click below to open the submission form.</div>
-      <button class="btn btn-gold" style="justify-content:center;width:100%;margin-bottom:14px" onclick="goToApp()">Submit My Dissertation &rarr;</button>
-      <div style="font-size:12px;font-family:Arial,sans-serif;color:var(--text-light);line-height:1.6">A receipt has been sent to <strong id="success-email"></strong>.<br>Questions? <a href="mailto:support@euc2.org" style="color:var(--navy)">support@euc2.org</a></div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ══ TERMS MODAL ══ -->
-<div class="modal-overlay" id="terms-modal">
-  <div class="modal-box">
-    <div class="modal-title">Terms of Use &mdash; Ready To Defend <button class="modal-close" onclick="closeTerms()">&times;</button></div>
-    <div class="modal-body">
-      <p><em>Effective June 2026 &nbsp;|&nbsp; Education Under Construction LLC &nbsp;|&nbsp; readytodefend.org</em></p>
-      <h3>1. About the Service</h3>
-      <p>Ready To Defend is a proprietary AI-assisted dissertation review tool operated by Education Under Construction LLC, founded by Jennifer Touati, EdD.</p>
-      <h3>2. One Dissertation Per Account</h3>
-      <p>Each account may only be used for a single doctoral dissertation. You may not share credentials, submit another student's work, or use the same account for multiple dissertation projects.</p>
-      <h3>3. Name Verification &amp; Account Locking</h3>
-      <p>Your legal name is saved at registration and <strong>cannot be changed</strong> without contacting support@euc2.org. It is matched against your dissertation title page on every submission. A title page is required. Mismatches flag your account for review. Methodology and chapters may change freely per submission.</p>
-      <h3>4. Submission Frequency</h3>
-      <p>Semester Access: 1 submission per 7-day period. Full Journey: 2 submissions per 7-day period. This gives you time to implement feedback before your next review.</p>
-      <h3>5. Payment &amp; Refunds</h3>
-      <p>Payment is required before submission. No refunds are issued after a report has been delivered. Suspended accounts are not eligible for refunds.</p>
-      <h3>6. AI Disclosure</h3>
-      <p>Reports are AI-assisted, not produced by a human reviewer, but may include revisions, updates, and additional commentary by Jennifer Touati, EdD or another member of staff.</p>
-      <h3>7. Intellectual Property</h3>
-      <p>The Ready To Defend methodology, module framework, and coaching comment banks are the proprietary intellectual property of Jennifer Touati, EdD and Education Under Construction LLC. Your dissertation content remains your property.</p>
-      <h3>8. Confidentiality</h3>
-      <p>Reports are prepared for the sole use of the named account holder and are confidential. You may not share, distribute, or publish your report.</p>
-      <h3>9. Limitation of Liability</h3>
-      <p>Ready To Defend is not liable for academic outcomes. Reports may not capture all issues and do not guarantee committee approval.</p>
-      <h3>10. Governing Law</h3>
-      <p>These Terms are governed by the laws of the State of Illinois. Disputes shall be resolved in Lake County, Illinois courts. A 30-day informal resolution period is required before formal legal action. Full Terms: readytodefend.org/terms &nbsp;|&nbsp; &copy; 2026 Education Under Construction LLC</p>
-    </div>
-  </div>
-</div>
-
-<script>
-var SUPABASE_URL = 'https://nhvcnpcdfuhmlpovkogk.supabase.co';
-var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5odmNucGNkZnVobWxwb3Zrb2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MzAxNzksImV4cCI6MjA5NjUwNjE3OX0.VibROZGpvk6Gb91XDsyo-QT0oztTXpk5I37IhHkbfvI';
-var STRIPE_PK = 'pk_test_51IhgGtCVdDmp4OwARAWTuTVRlxr1IbfEzKEnBzTJRdzBDsdyjBikm3Wm12YnnsmcAboHuUuru1YKiXGd14BvlkRt00vtnJZhkK';
-var PRICE_SEMESTER = 'price_1TgbFbCVdDmp4OwAItjrSuFT';
-var PRICE_JOURNEY = 'price_1TgbG1CVdDmp4OwASvYxOqK8';
-
-var currentUser = {name:'', email:'', plan:'', planName:'', planPrice:''};
-var supabaseClient = null;
-var stripeClient = null;
-
-function showScreen(name) {
-  var screens = document.querySelectorAll('.screen');
-  for (var i = 0; i < screens.length; i++) { screens[i].classList.remove('active'); }
-  var el = document.getElementById('screen-' + name);
-  if (el) { el.classList.add('active'); window.scrollTo(0,0); }
-}
-
-function openTerms() { var m = document.getElementById('terms-modal'); if(m) m.classList.add('open'); }
-function closeTerms() { var m = document.getElementById('terms-modal'); if(m) m.classList.remove('open'); }
-
-function selectPlan(planId, planName, price) {
-  currentUser.plan = planId;
-  currentUser.planName = planName;
-  currentUser.planPrice = price;
-  if (!currentUser.email) { showScreen('signup'); return; }
-  showPaymentScreen();
-}
-
-function showPaymentScreen() {
-  // Populate loading screen details
-  var el;
-  el = document.getElementById('pl-loading-name'); if(el) el.textContent = currentUser.planName;
-  el = document.getElementById('pl-loading-price'); if(el) el.textContent = '$' + currentUser.planPrice + '.00';
-  el = document.getElementById('pl-loading-email'); if(el) el.textContent = currentUser.email;
-  showScreen('payment-loading');
-  redirectToStripe();
-}
-
-function redirectToStripe() {
-  if (!supabaseClient) {
-    alert('Payment requires a hosted URL. Please use the Netlify link.');
-    showScreen('select-plan');
-    return;
-  }
-  supabaseClient.functions.invoke('create-checkout', {
-    body: {
-      price_id: currentUser.plan === 'journey' ? PRICE_JOURNEY : PRICE_SEMESTER,
-      plan_id: currentUser.plan,
-      plan_name: currentUser.planName,
-      email: currentUser.email,
-      success_url: window.location.href.split('?')[0] + '?payment=success&session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: window.location.href.split('?')[0] + '?payment=cancelled'
-    }
-  }).then(function(r) {
-    if (r.error || !r.data || !r.data.url) {
-      alert('Could not start checkout. Please contact support@euc2.org.');
-      showScreen('select-plan');
-      return;
-    }
-    window.location.href = r.data.url;
-  });
-}
-
-function submitSignup() {
-  var ln = document.getElementById('signup-name').value.trim();
-  var em = document.getElementById('signup-email').value.trim();
-  var pw = document.getElementById('signup-password').value;
-  var cf = document.getElementById('signup-confirm').value;
-  var terms = document.getElementById('signup-terms').checked;
-  var age = document.getElementById('signup-age').checked;
-  var err = document.getElementById('signup-error');
-  err.style.display = 'none';
-  if (!ln) { err.textContent = 'Your legal name is required.'; err.style.display='block'; return; }
-  if (!em || em.indexOf('@') < 0) { err.textContent = 'A valid email address is required.'; err.style.display='block'; return; }
-  if (pw.length < 8) { err.textContent = 'Password must be at least 8 characters.'; err.style.display='block'; return; }
-  if (pw !== cf) { err.textContent = 'Passwords do not match.'; err.style.display='block'; return; }
-  if (!terms) { err.textContent = 'You must agree to the Terms of Use.'; err.style.display='block'; return; }
-  if (!age) { err.textContent = 'You must confirm you are at least 18 years of age.'; err.style.display='block'; return; }
-  currentUser.name = ln;
-  currentUser.email = em;
-  if (supabaseClient) {
-    supabaseClient.auth.signUp({ email: em, password: pw, options: { data: { legal_name: ln } } }).then(function(r) {
-      if (r.error) { err.textContent = r.error.message; err.style.display='block'; return; }
-      afterSignup();
-    });
-  } else { afterSignup(); }
-}
-
-function afterSignup() {
-  if (currentUser.plan) {
-    showPaymentScreen();
-  } else {
-    var el = document.getElementById('plan-welcome-name');
-    if(el) el.textContent = currentUser.name.split(' ')[0];
-    showScreen('select-plan');
-  }
-}
-
-function submitLogin() {
-  var em = document.getElementById('login-email').value.trim();
-  var pw = document.getElementById('login-password').value;
-  var err = document.getElementById('login-error');
-  err.style.display = 'none';
-  if (!em || em.indexOf('@') < 0) { err.textContent = 'Please enter your email address.'; err.style.display='block'; return; }
-  if (!pw) { err.textContent = 'Please enter your password.'; err.style.display='block'; return; }
-  if (supabaseClient) {
-    supabaseClient.auth.signInWithPassword({ email: em, password: pw }).then(function(r) {
-      if (r.error) { err.textContent = 'Email or password is incorrect.'; err.style.display='block'; return; }
-      currentUser.email = em;
-      currentUser.name = r.data.user.user_metadata && r.data.user.user_metadata.legal_name ? r.data.user.user_metadata.legal_name : em;
-      var userId = r.data.user.id;
-      // Check for active purchase
-      supabaseClient.schema('rtd').from('purchases').select('*').eq('user_id', userId).eq('access_granted', true).order('created_at', {ascending:false}).limit(1).then(function(pr) {
-        if (pr.data && pr.data.length > 0) {
-          // Has active purchase - go straight to app
-          currentUser.plan = pr.data[0].plan_id;
-          goToApp();
-        } else {
-          // No purchase - go to plan selection
-          var el = document.getElementById('plan-welcome-name'); if(el) el.textContent = currentUser.name.split(' ')[0];
-          showScreen('select-plan');
-        }
-      });
-    });
-  } else {
-    currentUser.email = em;
-    var el = document.getElementById('plan-welcome-name'); if(el) el.textContent = em.split('@')[0];
-    showScreen('select-plan');
-  }
-}
-
-
-
-function signOut() {
-  if (supabaseClient) supabaseClient.auth.signOut();
-  currentUser = {name:'', email:'', plan:'', planName:'', planPrice:''};
-  showScreen('landing');
-}
-
-function goToApp() {
-  // Session is shared via Supabase localStorage on same domain
-  // No need to pass tokens - just redirect
-  window.location.href = 'ReadyToDefend_App_v4.html';
-}
-
-window.addEventListener('load', function() {
-  // Mount Stripe Card Element when payment screen is shown
-  var cardElement = null;
-  var originalShowScreen = showScreen;
-  showScreen = function(name) {
-    originalShowScreen(name);
-    if (name === 'payment' && window.Stripe && !cardElement) {
-      setTimeout(function() {
-        var s = Stripe(STRIPE_PK);
-        var elements = s.elements();
-        cardElement = elements.create('card', {
-          style: {
-            base: { fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#1a1a2e', '::placeholder': { color: '#aaa' } },
-            invalid: { color: '#c0392b' }
-          }
-        });
-        var mountEl = document.getElementById('stripe-card-element');
-        if (mountEl) {
-          cardElement.mount('#stripe-card-element');
-          cardElement.on('change', function(e) {
-            var errEl = document.getElementById('stripe-card-errors');
-            if (errEl) { errEl.textContent = e.error ? e.error.message : ''; errEl.style.display = e.error ? 'block' : 'none'; }
-          });
-        }
-        // Store stripe instance for payment
-        window._stripeInstance = s;
-      }, 200);
-    }
-  };
-
-  if (window.supabase) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('Supabase ready');
-    supabaseClient.auth.getSession().then(function(r) {
-      if (r.data && r.data.session) {
-        currentUser.email = r.data.session.user.email;
-        currentUser.name = r.data.session.user.user_metadata && r.data.session.user.user_metadata.legal_name ? r.data.session.user.user_metadata.legal_name : r.data.session.user.email;
+Deno.serve(async (req) => {
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
       }
-      var params = new URLSearchParams(window.location.search);
-      if (params.get('payment') === 'success') {
-        var sessionId = params.get('session_id');
-        // Call verify-payment to write purchase to database
-        if (sessionId && supabaseClient) {
-          supabaseClient.functions.invoke('verify-payment', {
-            body: { session_id: sessionId }
-          }).then(function(r) {
-            console.log('verify-payment result:', r);
-          }).catch(function(e) {
-            console.error('verify-payment error:', e);
-          });
-        }
-        // Go straight to app with session token - wait for session to be ready
-        setTimeout(function() {
-          if (supabaseClient) {
-            supabaseClient.auth.getSession().then(function(sr) {
-              if (sr.data && sr.data.session) {
-                var token = sr.data.session.access_token;
-                var refresh = sr.data.session.refresh_token;
-                window.location.href = 'ReadyToDefend_App_v4.html?token=' + encodeURIComponent(token) + '&refresh=' + encodeURIComponent(refresh);
-              } else {
-                window.location.href = 'ReadyToDefend_App_v4.html';
-              }
-            });
-          } else {
-            window.location.href = 'ReadyToDefend_App_v4.html';
-          }
-        }, 1500);
-      }
-    });
-  } else { console.log('Supabase not available - offline mode'); }
-  if (window.Stripe) { stripeClient = Stripe(STRIPE_PK); console.log('Stripe ready'); }
-  var modal = document.getElementById('terms-modal');
-  if (modal) { modal.addEventListener('click', function(e) { if(e.target === modal) closeTerms(); }); }
-});
-</script>
+    })
+  }
 
-</body>
-</html>
+  try {
+    const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY secret not set')
+
+    const body = await req.json()
+    const { prompt, passId } = body
+    if (!prompt) throw new Error('Missing prompt')
+
+    const systemPrompt = `You are the Ready To Defend dissertation review engine, built on the proprietary methodology of Dr. Jennifer Touati, EdD.
+
+Your ONLY output must be a raw JSON array. No markdown, no code fences, no preamble, no explanation. Begin your response with [ and end with ].
+
+Each finding object in the array:
+{
+  "chapter": "Chapter 1",
+  "section": "Background of the Problem",
+  "module": "anthropomorphic",
+  "moduleName": "Anthropomorphic Statements",
+  "severity": "critical|major|moderate|minor|coaching",
+  "passage": "REQUIRED -- copy the exact sentence or phrase from the dissertation that triggered this flag. Up to 60 words. If the issue is document-wide (e.g. no title page), write: [Document-wide issue -- no specific passage]",
+  "issue": "What is wrong and what rule applies. 2-3 sentences.",
+  "coaching": "Dr. Touati coaching comment in her voice. WHY it matters for defense. What to do. Vary the delivery."
+}
+
+SEVERITY:
+- critical: must fix before defense; committee sends it back
+- major: significant weakness undermining the research
+- moderate: needs attention; will get flagged but not a fail
+- minor: polish item; will not stop the defense
+- coaching: Dr. Touati observation, not an error
+
+Return [] if no issues found for the modules being checked.`
+
+    const response = await fetch(ANTHROPIC_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`Anthropic API error ${response.status}: ${errText.substring(0, 300)}`)
+    }
+
+    const data = await response.json()
+    console.log(`run-review [${passId}]: HTTP ${response.status}, content length: ${JSON.stringify(data).length}`)
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
+    })
+
+  } catch (err: any) {
+    console.error('run-review error:', err.message)
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      }
+    })
+  }
+})
