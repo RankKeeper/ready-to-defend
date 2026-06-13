@@ -57,7 +57,7 @@ input:disabled{background:#f4f5f7;color:#888}
 .progress-bar-wrap{background:#e8eaf0;border-radius:6px;height:8px;margin:12px 0 6px}
 .progress-bar-fill{height:8px;border-radius:6px;background:#003DA5;transition:width 0.5s ease}
 .progress-label{font-size:12px;font-family:Arial,sans-serif;color:#666;margin-bottom:16px;min-height:18px}
-.debug-box{background:#f8f9fb;border:1px solid #e2e4e9;border-radius:8px;padding:12px 14px;font-size:11px;font-family:monospace;color:#444;margin-top:14px;line-height:1.7;white-space:pre-wrap;max-height:240px;overflow-y:auto;display:block}
+.debug-box{background:#f8f9fb;border:1px solid #e2e4e9;border-radius:8px;padding:12px 14px;font-size:11px;font-family:monospace;color:#444;margin-top:14px;line-height:1.7;white-space:pre-wrap;max-height:240px;overflow-y:auto;display:none}
 .report-header{background:#003DA5;color:#fff;padding:1.5rem 1.75rem;border-radius:12px;margin-bottom:1rem}
 .report-title{font-size:20px;font-weight:400;margin-bottom:6px}
 .report-meta{font-size:12px;color:rgba(255,255,255,0.75);font-family:Arial,sans-serif;line-height:1.6}
@@ -737,12 +737,25 @@ function callAPI(prompt, passId) {
     }
     var raw = data.content.map(function(c){return c.type==='text'?c.text:'';}).join('').trim();
     dbg('[' + passId + '] Response length: ' + raw.length + ' chars');
-    dbg('[' + passId + '] First 150: ' + raw.substring(0,150));
-    var clean = raw.replace(/```json/gi,'').replace(/```/g,'').trim();
+    // Strip markdown fences robustly -- handle ```json, ```, and any whitespace
+    var clean = raw
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .trim();
+    // Find the JSON array boundaries
     var s = clean.indexOf('['), e = clean.lastIndexOf(']');
     if (s === -1 || e === -1) {
-      dbg('[' + passId + '] WARNING: No JSON array. Response: ' + raw.substring(0,300));
-      return [];
+      // Last resort: try to find array anywhere in raw response
+      var s2 = raw.indexOf('['), e2 = raw.lastIndexOf(']');
+      if (s2 !== -1 && e2 !== -1) {
+        clean = raw.substring(s2, e2+1);
+        s = 0; e = clean.length - 1;
+        dbg('[' + passId + '] Used fallback array extraction');
+      } else {
+        dbg('[' + passId + '] WARNING: No JSON array found. Response: ' + raw.substring(0,300));
+        return [];
+      }
     }
     try {
       var parsed = JSON.parse(clean.substring(s, e+1));
